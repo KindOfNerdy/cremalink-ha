@@ -7,6 +7,7 @@
 """
 
 import logging
+import time
 
 from cremalink.ecam.settings import SETTING_BIT_MAPS
 from homeassistant.components.switch import SwitchEntity
@@ -17,6 +18,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_CONNECTION_TYPE, DOMAIN, STANDBY_STATUSES
 from .coordinator import CremalinkCoordinator
+
+#: How long the switch shows the commanded state before trusting the
+#: monitor again (a wake-up was seen to report only after ~3 min).
+POWER_PENDING_SECONDS = 240
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,17 +87,29 @@ class CremalinkPowerSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity
             name=entry.title,
             manufacturer="cremalink",
         )
+        # (target state, monotonic deadline) after a command: the machine
+        # takes 30 s to minutes to report waking up or going to sleep, and
+        # the switch must not snap back meanwhile.
+        self._pending: tuple[bool, float] | None = None
+
+    def _reported_on(self) -> bool | None:
+        if not self.coordinator.data or not self.coordinator.data.status_name:
+            return None
+        return self.coordinator.data.status_name.lower() not in {"standby"} | (
+            STANDBY_STATUSES - {"going_to_sleep"}
+        )
 
     @property
     def is_on(self):
         """Return true if the switch is on."""
-        if not self.coordinator.data or not self.coordinator.data.status_name:
-            return None
-        # Check if the status indicates the device is not in standby
-        return self.coordinator.data.status_name.lower() not in [
-            "standby",
-            "in_standby",
-        ]
+        reported = self._reported_on()
+        if self._pending is not None:
+            target, deadline = self._pending
+            if reported == target or time.monotonic() >= deadline:
+                self._pending = None
+            else:
+                return target
+        return reported
 
     @property
     def available(self):
@@ -101,15 +118,24 @@ class CremalinkPowerSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity
             return False
         return super().available
 
+    async def _async_power(self, command: str, target: bool) -> None:
+        try:
+            await self.hass.async_add_executor_job(self.device.do, command)
+        except (OSError, TimeoutError, RuntimeError, ValueError) as err:
+            raise HomeAssistantError(
+                f"Could not send '{command}' to the machine: {err}"
+            ) from err
+        self._pending = (target, time.monotonic() + POWER_PENDING_SECONDS)
+        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
+
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
-        await self.hass.async_add_executor_job(self.device.do, "wakeup")
-        await self.coordinator.async_request_refresh()
+        await self._async_power("wakeup", True)
 
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
-        await self.hass.async_add_executor_job(self.device.do, "standby")
-        await self.coordinator.async_request_refresh()
+        await self._async_power("standby", False)
 
 
 class CremalinkSettingSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity):
