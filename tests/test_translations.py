@@ -204,6 +204,23 @@ class TestCommands:
         assert button.translation_key is None
         assert button._attr_name == "Brew Custom Drink"
 
+    async def test_map_entry_can_create_a_button_disabled(self, hass):
+        device = make_device()
+        device.get_commands = lambda: ["espresso", "mug_americano"]
+        device.command_map = {
+            "espresso": {"beverage_id": 1},
+            "mug_americano": {"beverage_id": 80, "enabled_default": False},
+        }
+        _, entities = await setup_entities(
+            hass,
+            make_entry(),
+            device,
+            button_mod,
+            FakeMonitorData(status_name="ready"),
+        )
+        enabled = {e._cmd: e.entity_registry_enabled_default for e in entities}
+        assert enabled == {"espresso": True, "mug_americano": False}
+
 
 class TestStatisticsStateClass:
     async def test_state_readings_are_not_counters(self, hass):

@@ -31,11 +31,21 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # Get available commands from the device
     cmds = await hass.async_add_executor_job(device.get_commands)
 
+    command_map = getattr(device, "command_map", None) or {}
     entities = []
     for cmd in cmds:
         # Filter out power commands as they might be handled elsewhere
         if cmd.lower() not in ["wakeup", "standby", "refresh"]:
-            entities.append(CremalinkButton(coordinator, device, cmd, entry))
+            # Rarely used variants (e.g. mug sizes) are created disabled.
+            spec = command_map.get(cmd)
+            enabled = not (
+                isinstance(spec, dict) and spec.get("enabled_default") is False
+            )
+            entities.append(
+                CremalinkButton(
+                    coordinator, device, cmd, entry, enabled_default=enabled
+                )
+            )
     async_add_entities(entities)
 
 
@@ -44,7 +54,7 @@ class CremalinkButton(CoordinatorEntity[CremalinkCoordinator], ButtonEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, device, cmd, entry):
+    def __init__(self, coordinator, device, cmd, entry, enabled_default=True):
         """Initialize the button.
 
         Args:
@@ -52,8 +62,10 @@ class CremalinkButton(CoordinatorEntity[CremalinkCoordinator], ButtonEntity):
             device: The Cremalink device instance.
             cmd: The command associated with this button.
             entry: The config entry.
+            enabled_default: Whether the entity is enabled when first created.
         """
         super().__init__(coordinator)
+        self._attr_entity_registry_enabled_default = enabled_default
         self.device = device
         self._cmd = cmd
         self._title = cmd.replace("_", " ").title()
