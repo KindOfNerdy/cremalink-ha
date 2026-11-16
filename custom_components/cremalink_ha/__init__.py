@@ -47,6 +47,7 @@ from .const import (
 )
 from .coordinator import CremalinkCoordinator
 from .recipe_session import RecipeSession
+from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -319,13 +320,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_create_background_task(
         hass, coordinator.async_refresh(), f"{DOMAIN}_{entry.entry_id}_first_refresh"
     )
-    if connection_type == CONNECTION_LOCAL:
-        entry.async_create_background_task(
-            hass,
-            _async_preload_catalog(hass, entry, device, dsn),
-            f"{DOMAIN}_{entry.entry_id}_cloud_catalog",
-        )
+    entry.async_create_background_task(
+        hass,
+        _async_preload_catalog(hass, entry, device, dsn),
+        f"{DOMAIN}_{entry.entry_id}_cloud_catalog",
+    )
+    async_setup_services(hass)
     return True
+
+
+def _cloud_snapshot(device) -> dict:
+    """``{name: value}`` of every datapoint, in one cloud request."""
+    properties = {}
+    for item in device.transport.get_properties() or []:
+        prop = item.get("property", item) if isinstance(item, dict) else None
+        if isinstance(prop, dict) and prop.get("name"):
+            properties[prop["name"]] = prop.get("value")
+    return properties
 
 
 async def _async_preload_catalog(
@@ -342,16 +353,22 @@ async def _async_preload_catalog(
     failure — the library's lazy LAN reads (one GET per use, cached)
     remain the backup, so nothing here may raise.
     """
+    cloud = entry.data.get(CONF_CONNECTION_TYPE) == CONNECTION_CLOUD
     token_file = entry.options.get(CONF_TOKEN_FILE) or entry.data.get(CONF_TOKEN_FILE)
-    if not token_file:
+    if not cloud and not token_file:
         _LOGGER.debug(
             "Cloud catalogue preload skipped: no cloud token stored for %s", dsn
         )
         return
 
     def _fetch_and_seed() -> tuple[int, int]:
-        client = Client(token_file, logger=_LOGGER)
-        properties = client.fetch_properties(dsn)
+        if cloud:
+            # Cloud devices already hold a session: reuse it instead of a
+            # second client rotating the same refresh token.
+            properties = _cloud_snapshot(device)
+        else:
+            client = Client(str(token_file), logger=_LOGGER)
+            properties = client.fetch_properties(dsn)
         seeded = device.seed_catalog_from_properties(properties)
         return len(properties), seeded
 

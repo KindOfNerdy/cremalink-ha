@@ -401,10 +401,15 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
             return
         if not beverages:
             return
+        custom_names = getattr(self.device, "custom_recipe_names", dict)() or {}
         options: dict[str, int] = {}
         for bev in beverages:
             entry = self.device.brew_entry(bev.bev_id) or {}
-            label = entry.get("name") or _beverage_label(bev)
+            label = (
+                custom_names.get(bev.bev_id)
+                or entry.get("name")
+                or _beverage_label(bev)
+            )
             options.setdefault(label, bev.bev_id)
         self._options = options
         # The priming task can outrun entity attachment (hass is None
