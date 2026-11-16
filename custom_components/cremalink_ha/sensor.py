@@ -1,5 +1,6 @@
 """Sensor platform for the Cremalink integration."""
 
+from cremalink.ecam import statistics as ecam_statistics
 from cremalink.ecam.statistics import CLOUD_COUNTER_CANDIDATES, STAT_LABELS
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -30,6 +31,18 @@ _STANDBY_RETAINED_KEYS = {"progress_percent", "accessory_name"}
 
 #: Cloud "counters" that are state readings, not lifetime counters.
 _NON_COUNTER_LOGICAL = {"descale_status", "water_hardness"}
+
+#: Maintenance levels the machine publishes as percentages (shown as is).
+_PERCENT_LOGICAL = getattr(ecam_statistics, "CLOUD_COUNTER_PERCENTAGES", frozenset())
+
+_COUNTER_ICONS = {
+    "grounds_container_percentage": "mdi:delete-variant",
+    "descale_percentage": "mdi:water-check",
+    "filter_percentage": "mdi:filter",
+    "aborted_beverages": "mdi:coffee-off",
+    "iced_beverages": "mdi:cube-outline",
+    "cold_brew_beverages": "mdi:snowflake",
+}
 
 #: A2-id → unique-id suffix overrides; everything else is stat_<label>.
 _STAT_SUFFIX_OVERRIDES = {
@@ -98,7 +111,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
         # Counters with no candidate datapoint on this map produce no entity.
         map_names = set(getattr(device, "statistics_datapoints", None) or [])
         for logical, candidates in CLOUD_COUNTER_CANDIDATES.items():
-            if map_names and not any(c in map_names for c in candidates):
+            # "name#key,key" candidates count keys of a JSON datapoint.
+            if map_names and not any(
+                c.split("#", 1)[0] in map_names for c in candidates
+            ):
                 continue
             entities.append(CremalinkCloudCounterSensor(coordinator, entry, logical))
 
@@ -270,13 +286,17 @@ class CremalinkCloudCounterSensor(_StatisticsSensorBase, SensorEntity):
         super().__init__(coordinator, entry)
         self._logical = logical
         self._attr_translation_key = f"stat_{logical}"
-        self._attr_state_class = (
-            None
-            if logical in _NON_COUNTER_LOGICAL
-            else SensorStateClass.TOTAL_INCREASING
-        )
+        if logical in _PERCENT_LOGICAL:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_native_unit_of_measurement = PERCENTAGE
+        else:
+            self._attr_state_class = (
+                None
+                if logical in _NON_COUNTER_LOGICAL
+                else SensorStateClass.TOTAL_INCREASING
+            )
         self._attr_unique_id = f"{entry.entry_id}_stat_{logical}"
-        self._attr_icon = "mdi:counter"
+        self._attr_icon = _COUNTER_ICONS.get(logical, "mdi:counter")
 
     @property
     def native_value(self):

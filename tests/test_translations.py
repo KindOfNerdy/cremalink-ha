@@ -61,7 +61,9 @@ async def _device_configurations(hass):
     handling.
     """
     all_cloud_datapoints = [
-        name for names in CLOUD_COUNTER_CANDIDATES.values() for name in names
+        name.split("#", 1)[0]
+        for names in CLOUD_COUNTER_CANDIDATES.values()
+        for name in names
     ]
     return [
         await _setup(hass, sensor_mod, entry_id="native_sensor"),
@@ -215,3 +217,16 @@ class TestStatisticsStateClass:
         assert by_key["stat_water_hardness"].state_class is None
         assert by_key["stat_espresso"].state_class == "total_increasing"
         assert by_key["stat_descales"].state_class == "total_increasing"
+
+    async def test_maintenance_levels_are_percent_measurements(self, hass):
+        entities = (await _device_configurations(hass))[1]  # cloud counters
+        by_key = {e.translation_key: e for e in entities}
+        for key in (
+            "stat_grounds_container_percentage",
+            "stat_descale_percentage",
+            "stat_filter_percentage",
+        ):
+            assert by_key[key].state_class == "measurement"
+            assert by_key[key].native_unit_of_measurement == "%"
+        assert by_key["stat_aborted_beverages"].state_class == "total_increasing"
+        assert by_key["stat_aborted_beverages"].native_unit_of_measurement is None
