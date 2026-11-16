@@ -25,11 +25,16 @@ actions as Home Assistant entities.
 Entities include:
 
 * **Sensors** — machine status, statistics counters
-* **Selects** — profile selection and writable machine settings (auto-off,
-  water hardness)
-* **Switches** — power, beep, energy saving (machine-confirmed writes)
-* **Buttons** — brew beverages and machine actions
+* **Selects** — profile selection, recipe picker and writable machine
+  settings (auto-off, water hardness)
+* **Numbers** — per-recipe amounts for the next brew (coffee, milk, water…)
+* **Switches** — power, brew/stop, beep, energy saving (machine-confirmed
+  writes)
+* **Buttons** — machine actions
 * **Binary sensors** — accessory/alert states
+
+The ``cremalink_ha.brew`` action brews one drink with optional amounts in a
+single call (for automations and scripts).
 
 Local mode runs an embedded cremalink LAN server in-process: session
 keep-alives, command queuing, and datapoint republish handling are managed
