@@ -333,5 +333,41 @@
         }
       }
     }
-  }
+  },
+    "services": {
+        "brew": {
+            "name": "Brew",
+            "description": "Brews one drink. Amounts left out come from the recipe stored in the active profile; given amounts are kept within the machine's limits. Nothing is saved on the machine.",
+            "fields": {
+                "device_id": {
+                    "name": "Machine",
+                    "description": "The coffee machine."
+                },
+                "beverage": {
+                    "name": "Drink",
+                    "description": "Drink name or command (e.g. cappuccino), the name of a custom recipe, or a beverage id."
+                },
+                "coffee": {
+                    "name": "Coffee",
+                    "description": "Coffee amount in ml."
+                },
+                "taste": {
+                    "name": "Strength",
+                    "description": "Coffee strength (aroma)."
+                },
+                "milk": {
+                    "name": "Milk",
+                    "description": "Milk in seconds."
+                },
+                "water": {
+                    "name": "Water",
+                    "description": "Hot water in ml."
+                },
+                "tea_temperature": {
+                    "name": "Tea temperature",
+                    "description": "Tea temperature level."
+                }
+            }
+        }
+    }
 }

@@ -217,5 +217,41 @@
         }
       }
     }
-  }
+  },
+    "services": {
+        "brew": {
+            "name": "Brühen",
+            "description": "Brüht ein Getränk. Nicht angegebene Mengen kommen aus dem Rezept im aktiven Profil; angegebene Mengen werden auf die Grenzen der Maschine begrenzt. Auf der Maschine wird nichts gespeichert.",
+            "fields": {
+                "device_id": {
+                    "name": "Maschine",
+                    "description": "Die Kaffeemaschine."
+                },
+                "beverage": {
+                    "name": "Getränk",
+                    "description": "Getränkename oder Befehl (z. B. cappuccino), Name eines eigenen Rezepts oder Getränke-ID."
+                },
+                "coffee": {
+                    "name": "Kaffee",
+                    "description": "Kaffeemenge in ml."
+                },
+                "taste": {
+                    "name": "Stärke",
+                    "description": "Kaffeestärke (Aroma)."
+                },
+                "milk": {
+                    "name": "Milch",
+                    "description": "Milch in Sekunden."
+                },
+                "water": {
+                    "name": "Wasser",
+                    "description": "Heißwasser in ml."
+                },
+                "tea_temperature": {
+                    "name": "Tee-Temperatur",
+                    "description": "Stufe der Tee-Temperatur."
+                }
+            }
+        }
+    }
 }
