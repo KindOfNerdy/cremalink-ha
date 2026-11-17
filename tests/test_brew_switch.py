@@ -127,3 +127,67 @@ class TestBrewSwitchActions:
         )
         await _brew_switch(entities).async_turn_off()
         assert calls == ["stop"]
+
+
+async def _ready_session(hass, **dev):
+    coordinator, entities, session = await _setup(hass, **dev)
+    session.select(0x02)
+    session.params = _params(0x02)
+    session.loading = False
+    return coordinator, _brew_switch(entities), session
+
+
+class TestBrewSwitchPending:
+    """Over the cloud the monitor shows a started drink only ~30 s later."""
+
+    async def test_shows_on_at_once_and_ignores_a_second_tap(self, hass):
+        calls = []
+        _, switch, _ = await _ready_session(hass, brew=lambda *a, **kw: calls.append(a))
+
+        await switch.async_turn_on()
+        assert switch.is_on is True
+        await switch.async_turn_on()
+
+        assert calls == [(0x02,)]
+
+    async def test_monitor_confirmation_takes_over(self, hass):
+        coordinator, switch, _ = await _ready_session(hass)
+        await switch.async_turn_on()
+
+        coordinator.data = FakeMonitorData(status_name="ready", is_busy=True)
+        assert switch.is_on is True
+        coordinator.data = FakeMonitorData(status_name="ready", is_busy=False)
+        assert switch.is_on is False  # drink finished, nothing pending
+
+    async def test_falls_back_when_the_machine_never_reports_it(
+        self, hass, monkeypatch
+    ):
+        clock = [1000.0]
+        monkeypatch.setattr(switch_mod.time, "monotonic", lambda: clock[0])
+        _, switch, _ = await _ready_session(hass)
+        await switch.async_turn_on()
+
+        clock[0] += switch_mod.BREW_PENDING_SECONDS + 1
+
+        assert switch.is_on is False
+
+    async def test_failed_command_does_not_stay_on(self, hass):
+        def _boom(*_a, **_kw):
+            raise OSError("cloud down")
+
+        _, switch, _ = await _ready_session(hass, brew=_boom)
+
+        with pytest.raises(OSError):
+            await switch.async_turn_on()
+        assert switch.is_on is False
+
+    async def test_stop_while_pending_is_still_possible(self, hass):
+        calls = []
+        _, switch, _ = await _ready_session(hass, do=lambda cmd: calls.append(cmd))
+        await switch.async_turn_on()
+        assert switch.available is True
+
+        await switch.async_turn_off()
+
+        assert calls == ["stop"]
+        assert switch.is_on is False

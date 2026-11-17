@@ -117,6 +117,9 @@ integration exposes:
     connections load the same snapshot through their own session. The
     current values of a recipe are always read live from the machine.
   - Custom recipes appear under the names given on the machine.
+  - The brew switch turns on right away and stays on until the machine
+    reports the drink (over the cloud that can take ~30 s); a second tap
+    in that time does not start a second drink.
 - **Stop brewing**: unchanged — available while a brew runs.
 - **Brew action** (`cremalink_ha.brew`): one call for automations and
   scripts. Give the machine (`device_id`) and the drink (name, command
