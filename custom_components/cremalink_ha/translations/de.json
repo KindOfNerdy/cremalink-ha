@@ -19,7 +19,60 @@
         "name": "Profil"
       },
       "recipe": {
-        "name": "Rezept"
+        "name": "Rezept",
+        "state": {
+          "americano": "Americano",
+          "brew_over_ice": "Kalter Kaffee",
+          "caffe_latte": "Caffè Latte",
+          "cappuccino": "Cappuccino",
+          "cappuccino_mix": "Cappuccino Mix",
+          "cappuccino_plus": "Cappuccino Plus",
+          "coffee": "Kaffee",
+          "coffee_pot": "Kaffeekanne",
+          "cold_brew": "Cold Brew",
+          "cold_brew_cappuccino": "Cold Brew Cappuccino",
+          "cold_brew_cappuccino_mug": "To-Go-Becher Cold Brew Cappuccino",
+          "cold_brew_latte": "Cold Brew Latte",
+          "cold_brew_latte_mug": "To-Go-Becher Cold Brew Latte",
+          "cold_brew_mug": "To-Go-Becher Cold Brew",
+          "cold_brew_pot": "Kanne Cold Brew",
+          "cold_brew_to_mix": "Cold Brew to Mix",
+          "cortado": "Cortado",
+          "doppio_plus": "Doppio Plus",
+          "double_espresso": "Doppelter Espresso",
+          "espresso": "Espresso",
+          "espresso_macchiato": "Espresso Macchiato",
+          "espresso_soul": "Espresso Soul",
+          "flat_white": "Flat White",
+          "hot_milk": "Heiße Milch",
+          "hot_water": "Heißes Wasser",
+          "iced_americano": "Cold Americano",
+          "iced_caffe_latte": "Cold Caffè Latte",
+          "iced_cappuccino": "Cold Cappuccino",
+          "iced_cappuccino_mix": "Cold Cappuccino Mix",
+          "iced_cold_milk": "Kalte Milch",
+          "iced_flat_white": "Cold Flat White",
+          "iced_latte_macchiato": "Cold Latte Macchiato",
+          "latte_macchiato": "Latte Macchiato",
+          "long_coffee": "Langer Kaffee",
+          "mug_americano": "To-Go-Becher Americano",
+          "mug_caffe_latte": "To-Go-Becher Caffè Latte",
+          "mug_cappuccino": "To-Go-Becher Cappuccino",
+          "mug_cappuccino_mix": "To-Go-Becher Cappuccino Mix",
+          "mug_flat_white": "To-Go-Becher Flat White",
+          "mug_hot_milk": "To-Go-Becher Heiße Milch",
+          "mug_iced_americano": "To-Go-Becher Cold Americano",
+          "mug_iced_caffe_latte": "To-Go-Becher Cold Caffè Latte",
+          "mug_iced_cappuccino": "To-Go-Becher Cold Cappuccino",
+          "mug_iced_cappuccino_mix": "To-Go-Becher Cold Cappuccino Mix",
+          "mug_iced_cold_milk": "To-Go-Becher Kalte Milch",
+          "mug_iced_flat_white": "To-Go-Becher Cold Flat White",
+          "mug_iced_latte_macchiato": "To-Go-Becher Cold Latte Macchiato",
+          "mug_latte_macchiato": "To-Go-Becher Latte Macchiato",
+          "mug_over_ice": "To-Go-Becher Kalter Kaffee",
+          "over_ice_espresso": "Kalter Espresso",
+          "tea": "Tee"
+        }
       },
       "bean_system": {
         "name": "Bohnensystem"
@@ -218,40 +271,40 @@
       }
     }
   },
-    "services": {
-        "brew": {
-            "name": "Brühen",
-            "description": "Brüht ein Getränk. Nicht angegebene Mengen kommen aus dem Rezept im aktiven Profil; angegebene Mengen werden auf die Grenzen der Maschine begrenzt. Auf der Maschine wird nichts gespeichert.",
-            "fields": {
-                "device_id": {
-                    "name": "Maschine",
-                    "description": "Die Kaffeemaschine."
-                },
-                "beverage": {
-                    "name": "Getränk",
-                    "description": "Getränkename oder Befehl (z. B. cappuccino), Name eines eigenen Rezepts oder Getränke-ID."
-                },
-                "coffee": {
-                    "name": "Kaffee",
-                    "description": "Kaffeemenge in ml."
-                },
-                "taste": {
-                    "name": "Stärke",
-                    "description": "Kaffeestärke (Aroma)."
-                },
-                "milk": {
-                    "name": "Milch",
-                    "description": "Milch in Sekunden."
-                },
-                "water": {
-                    "name": "Wasser",
-                    "description": "Heißwasser in ml."
-                },
-                "tea_temperature": {
-                    "name": "Tee-Temperatur",
-                    "description": "Stufe der Tee-Temperatur."
-                }
-            }
+  "services": {
+    "brew": {
+      "name": "Brühen",
+      "description": "Brüht ein Getränk. Nicht angegebene Mengen kommen aus dem Rezept im aktiven Profil; angegebene Mengen werden auf die Grenzen der Maschine begrenzt. Auf der Maschine wird nichts gespeichert.",
+      "fields": {
+        "device_id": {
+          "name": "Maschine",
+          "description": "Die Kaffeemaschine."
+        },
+        "beverage": {
+          "name": "Getränk",
+          "description": "Getränkename oder Befehl (z. B. cappuccino), Name eines eigenen Rezepts oder Getränke-ID."
+        },
+        "coffee": {
+          "name": "Kaffee",
+          "description": "Kaffeemenge in ml."
+        },
+        "taste": {
+          "name": "Stärke",
+          "description": "Kaffeestärke (Aroma)."
+        },
+        "milk": {
+          "name": "Milch",
+          "description": "Milch in Sekunden."
+        },
+        "water": {
+          "name": "Wasser",
+          "description": "Heißwasser in ml."
+        },
+        "tea_temperature": {
+          "name": "Tee-Temperatur",
+          "description": "Stufe der Tee-Temperatur."
         }
+      }
     }
+  }
 }

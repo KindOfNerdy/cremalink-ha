@@ -402,15 +402,25 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
         if not beverages:
             return
         custom_names = getattr(self.device, "custom_recipe_names", dict)() or {}
+        commands = {
+            int(spec["beverage_id"]): command
+            for command, spec in (
+                getattr(self.device, "command_map", None) or {}
+            ).items()
+            if isinstance(spec, dict) and "beverage_id" in spec
+        }
         options: dict[str, int] = {}
         for bev in beverages:
-            entry = self.device.brew_entry(bev.bev_id) or {}
-            label = (
+            # Map drinks use their command as option; Home Assistant shows
+            # it in the user's language via entity.select.recipe.state.
+            # Custom recipes keep the name given on the machine.
+            option = (
                 custom_names.get(bev.bev_id)
-                or entry.get("name")
+                or commands.get(bev.bev_id)
+                or (self.device.brew_entry(bev.bev_id) or {}).get("name")
                 or _beverage_label(bev)
             )
-            options.setdefault(label, bev.bev_id)
+            options.setdefault(option, bev.bev_id)
         self._options = options
         # The priming task can outrun entity attachment (hass is None
         # until added) — the next coordinator update writes state then.
