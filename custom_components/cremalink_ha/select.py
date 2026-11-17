@@ -413,13 +413,18 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
         if not beverages:
             return
         custom_names = getattr(self.device, "custom_recipe_names", dict)() or {}
-        commands = {
-            int(spec["beverage_id"]): command
-            for command, spec in (
-                getattr(self.device, "command_map", None) or {}
-            ).items()
-            if isinstance(spec, dict) and "beverage_id" in spec
-        }
+        # Stop shares its beverage id with a drink (action 2 = stop, e.g.
+        # ECAM452 stop/hot_water both carry id 16): only start commands name
+        # a drink, and the first one in map order wins.
+        commands: dict[int, str] = {}
+        command_map = getattr(self.device, "command_map", None) or {}
+        for command, spec in command_map.items():
+            if (
+                isinstance(spec, dict)
+                and "beverage_id" in spec
+                and int(spec.get("action", 1)) != 2
+            ):
+                commands.setdefault(int(spec["beverage_id"]), command)
         options: dict[str, int] = {}
         for bev in beverages:
             # Map drinks use their command as option; Home Assistant shows
