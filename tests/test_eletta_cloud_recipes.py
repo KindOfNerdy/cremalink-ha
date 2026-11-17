@@ -59,6 +59,22 @@ class TestCloudCatalogue:
 
 
 class TestRecipeSelectLabels:
+    def test_every_map_drink_has_a_translated_option(self):
+        import json
+        from pathlib import Path
+
+        import cremalink.devices as devices_pkg
+
+        comp = Path(select_mod.__file__).parent
+        for lang in ("en", "de"):
+            data = json.loads((comp / "translations" / f"{lang}.json").read_text())
+            names = data["entity"]["select"]["recipe"]["state"]
+            for path in Path(devices_pkg.__file__).parent.glob("*.json"):
+                cmds = json.loads(path.read_text())["command_map"]
+                for command, spec in cmds.items():
+                    if "beverage_id" in spec and command != "stop":
+                        assert command in names, (lang, path.name, command)
+
     async def test_custom_recipes_show_their_names(self, hass):
         beverages = [
             SimpleNamespace(bev_id=1, kind="builtin", name=None),
@@ -68,6 +84,7 @@ class TestRecipeSelectLabels:
         device = make_device(
             beverage_catalog=lambda **_: beverages,
             brew_entry=lambda bid: {1: COMMAND_MAP["espresso"]}.get(bid),
+            command_map=COMMAND_MAP,
         )
         device.custom_recipe_names = lambda: {230: "Latte XL"}
         _, entities = await setup_entities(
@@ -82,7 +99,8 @@ class TestRecipeSelectLabels:
         )
         await recipe.async_refresh_state()
 
-        assert recipe.options == ["Espresso", "Latte XL", "Custom 2"]
+        # Map drinks by command (translated by HA), custom ones by name.
+        assert recipe.options == ["espresso", "Latte XL", "Custom 2"]
 
 
 class TestResolveBeverage:
