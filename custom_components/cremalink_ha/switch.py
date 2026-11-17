@@ -34,6 +34,11 @@ _LOGGER = logging.getLogger(__name__)
 #: wins again — ECAM wake-up incl. rinse can take ~a minute.
 _PENDING_SECONDS = 120
 
+#: How long the brew switch shows a brew it was asked for before the
+#: monitor has to confirm it: over the cloud the monitor reported a
+#: started drink only ~30 s after the command, and the switch looked dead.
+BREW_PENDING_SECONDS = 90
+
 #: Bit-setting switch definitions: (setting key, translation-key suffix,
 #: icon). The suffix doubles as the unique-id tail.
 SETTING_SWITCHES = [
@@ -303,6 +308,19 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
             name=entry.title,
             manufacturer="cremalink",
         )
+        # (target state, monotonic deadline) while a brew or stop command
+        # waits for the monitor to report it.
+        self._pending: tuple[bool, float] | None = None
+
+    def _pending_target(self) -> bool | None:
+        """The commanded state while it is still unconfirmed, else None."""
+        if self._pending is None:
+            return None
+        target, deadline = self._pending
+        if self._brewing() == target or time.monotonic() >= deadline:
+            self._pending = None
+            return None
+        return target
 
     def _brewing(self):
         """Monitor says a brewing action is running (same rule the drink
@@ -317,6 +335,11 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
 
     @property
     def is_on(self):
+        """Brewing per the monitor — or the requested state until the
+        monitor confirms it (a brew shows up there only after a while)."""
+        pending = self._pending_target()
+        if pending is not None:
+            return pending
         data = self.coordinator.data
         if not data or data.status_name is None:
             return None
@@ -329,13 +352,18 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
         data = self.coordinator.data
         if not super().available or not data or data.status_name is None:
             return False
-        if self._brewing():
+        if self._brewing() or self._pending_target() is not None:
             return True
         if data.status_name in BUTTON_UNAVAILABLE_STATUSES:
             return False
         return self.session.ready
 
     async def async_turn_on(self, **kwargs):
+        if self._pending_target() is True:
+            # Already sent and not yet visible on the monitor: a second tap
+            # must not queue a second drink.
+            _LOGGER.debug("brew already requested, waiting for the machine")
+            return
         data = self.coordinator.data
         if data:
             if data.status_name in NOT_READY_STATUSES:
@@ -353,16 +381,27 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
                 "Recipe parameters are not loaded yet for the selected "
                 "recipe/profile — wait for them to appear, then brew."
             )
-        await self.hass.async_add_executor_job(
+        await self._async_command(
+            True,
             partial(
                 self.device.brew,
                 beverage_id,
                 overrides=dict(self.session.overrides),
                 params=self.session.params,
-            )
+            ),
         )
-        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
-        await self.hass.async_add_executor_job(self.device.do, "stop")
+        await self._async_command(False, partial(self.device.do, "stop"))
+
+    async def _async_command(self, target: bool, call) -> None:
+        """Show ``target`` at once, send the command, undo on failure."""
+        self._pending = (target, time.monotonic() + BREW_PENDING_SECONDS)
+        self.async_write_ha_state()
+        try:
+            await self.hass.async_add_executor_job(call)
+        except Exception:
+            self._pending = None
+            self.async_write_ha_state()
+            raise
         await self.coordinator.async_request_refresh()
