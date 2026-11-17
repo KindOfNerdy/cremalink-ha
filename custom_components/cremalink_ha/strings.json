@@ -135,7 +135,60 @@
         "name": "Profile"
       },
       "recipe": {
-        "name": "Recipe"
+        "name": "Recipe",
+        "state": {
+          "americano": "Americano",
+          "brew_over_ice": "Brew Over Ice",
+          "caffe_latte": "Caffe Latte",
+          "cappuccino": "Cappuccino",
+          "cappuccino_mix": "Cappuccino Mix",
+          "cappuccino_plus": "Cappuccino Plus",
+          "coffee": "Coffee",
+          "coffee_pot": "Coffee Pot",
+          "cold_brew": "Cold Brew",
+          "cold_brew_cappuccino": "Cold Brew Cappuccino",
+          "cold_brew_cappuccino_mug": "Cold Brew Cappuccino Mug",
+          "cold_brew_latte": "Cold Brew Latte",
+          "cold_brew_latte_mug": "Cold Brew Latte Mug",
+          "cold_brew_mug": "Cold Brew Mug",
+          "cold_brew_pot": "Cold Brew Pot",
+          "cold_brew_to_mix": "Cold Brew To Mix",
+          "cortado": "Cortado",
+          "doppio_plus": "Doppio Plus",
+          "double_espresso": "Double Espresso",
+          "espresso": "Espresso",
+          "espresso_macchiato": "Espresso Macchiato",
+          "espresso_soul": "Espresso Soul",
+          "flat_white": "Flat White",
+          "hot_milk": "Hot Milk",
+          "hot_water": "Hot Water",
+          "iced_americano": "Iced Americano",
+          "iced_caffe_latte": "Iced Caffe Latte",
+          "iced_cappuccino": "Iced Cappuccino",
+          "iced_cappuccino_mix": "Iced Cappuccino Mix",
+          "iced_cold_milk": "Iced Cold Milk",
+          "iced_flat_white": "Iced Flat White",
+          "iced_latte_macchiato": "Iced Latte Macchiato",
+          "latte_macchiato": "Latte Macchiato",
+          "long_coffee": "Long Coffee",
+          "mug_americano": "Mug Americano",
+          "mug_caffe_latte": "Mug Caffe Latte",
+          "mug_cappuccino": "Mug Cappuccino",
+          "mug_cappuccino_mix": "Mug Cappuccino Mix",
+          "mug_flat_white": "Mug Flat White",
+          "mug_hot_milk": "Mug Hot Milk",
+          "mug_iced_americano": "Mug Iced Americano",
+          "mug_iced_caffe_latte": "Mug Iced Caffe Latte",
+          "mug_iced_cappuccino": "Mug Iced Cappuccino",
+          "mug_iced_cappuccino_mix": "Mug Iced Cappuccino Mix",
+          "mug_iced_cold_milk": "Mug Iced Cold Milk",
+          "mug_iced_flat_white": "Mug Iced Flat White",
+          "mug_iced_latte_macchiato": "Mug Iced Latte Macchiato",
+          "mug_latte_macchiato": "Mug Latte Macchiato",
+          "mug_over_ice": "Mug Over Ice",
+          "over_ice_espresso": "Over Ice Espresso",
+          "tea": "Tea"
+        }
       },
       "bean_system": {
         "name": "Bean System"
@@ -334,40 +387,40 @@
       }
     }
   },
-    "services": {
-        "brew": {
-            "name": "Brew",
-            "description": "Brews one drink. Amounts left out come from the recipe stored in the active profile; given amounts are kept within the machine's limits. Nothing is saved on the machine.",
-            "fields": {
-                "device_id": {
-                    "name": "Machine",
-                    "description": "The coffee machine."
-                },
-                "beverage": {
-                    "name": "Drink",
-                    "description": "Drink name or command (e.g. cappuccino), the name of a custom recipe, or a beverage id."
-                },
-                "coffee": {
-                    "name": "Coffee",
-                    "description": "Coffee amount in ml."
-                },
-                "taste": {
-                    "name": "Strength",
-                    "description": "Coffee strength (aroma)."
-                },
-                "milk": {
-                    "name": "Milk",
-                    "description": "Milk in seconds."
-                },
-                "water": {
-                    "name": "Water",
-                    "description": "Hot water in ml."
-                },
-                "tea_temperature": {
-                    "name": "Tea temperature",
-                    "description": "Tea temperature level."
-                }
-            }
+  "services": {
+    "brew": {
+      "name": "Brew",
+      "description": "Brews one drink. Amounts left out come from the recipe stored in the active profile; given amounts are kept within the machine's limits. Nothing is saved on the machine.",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "The coffee machine."
+        },
+        "beverage": {
+          "name": "Drink",
+          "description": "Drink name or command (e.g. cappuccino), the name of a custom recipe, or a beverage id."
+        },
+        "coffee": {
+          "name": "Coffee",
+          "description": "Coffee amount in ml."
+        },
+        "taste": {
+          "name": "Strength",
+          "description": "Coffee strength (aroma)."
+        },
+        "milk": {
+          "name": "Milk",
+          "description": "Milk in seconds."
+        },
+        "water": {
+          "name": "Water",
+          "description": "Hot water in ml."
+        },
+        "tea_temperature": {
+          "name": "Tea temperature",
+          "description": "Tea temperature level."
         }
+      }
     }
+  }
 }
