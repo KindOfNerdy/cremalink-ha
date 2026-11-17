@@ -21,7 +21,9 @@ from types import SimpleNamespace
 from tests.helpers import FakeMonitorData, make_device, make_entry, setup_entities
 
 COMMAND_MAP = {
-    "espresso": {"beverage_id": 1, "name": "Espresso"},
+    "espresso": {"beverage_id": 1, "action": 1, "name": "Espresso"},
+    # Same id as espresso, after it in map order (like stop/hot_water).
+    "stop": {"beverage_id": 1, "action": 2, "name": "Stop"},
     "cappuccino": {"beverage_id": 7, "name": "Cappuccino"},
     "wakeup": {"command": "0d07840f02015512"},
 }
@@ -126,6 +128,10 @@ class TestResolveBeverage:
     def test_unknown_drink(self):
         with pytest.raises(ServiceValidationError):
             resolve_beverage(self._device(), "wakeup")
+
+    def test_stop_is_no_drink(self):
+        with pytest.raises(ServiceValidationError):
+            resolve_beverage(self._device(), "stop")
 
 
 class TestOverrides:
