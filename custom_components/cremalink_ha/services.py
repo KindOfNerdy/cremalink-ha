@@ -62,7 +62,8 @@ def resolve_beverage(device, beverage: Any) -> int:
         return int(beverage)
     wanted = _normalise(str(beverage))
     for command, entry in (getattr(device, "command_map", None) or {}).items():
-        if "beverage_id" not in entry:
+        # Stop (action 2) shares a drink's beverage id; it is no drink.
+        if "beverage_id" not in entry or int(entry.get("action", 1)) == 2:
             continue
         if wanted in (_normalise(command), _normalise(str(entry.get("name", "")))):
             return int(entry["beverage_id"])
