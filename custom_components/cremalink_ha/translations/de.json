@@ -19,7 +19,60 @@
         "name": "Profil"
       },
       "recipe": {
-        "name": "Rezept"
+        "name": "Rezept",
+        "state": {
+          "americano": "Americano",
+          "brew_over_ice": "Over Ice",
+          "caffe_latte": "Caffè Latte",
+          "cappuccino": "Cappuccino",
+          "cappuccino_mix": "Cappuccino Mix",
+          "cappuccino_plus": "Cappuccino+",
+          "coffee": "Kaffee",
+          "coffee_pot": "Kaffeekanne",
+          "cold_brew": "Cold Brew",
+          "cold_brew_cappuccino": "Cold Brew Cappuccino",
+          "cold_brew_cappuccino_mug": "Tasse Cold Brew Cappuccino",
+          "cold_brew_latte": "Cold Brew Latte",
+          "cold_brew_latte_mug": "Tasse Cold Brew Latte",
+          "cold_brew_mug": "Tasse Cold Brew",
+          "cold_brew_pot": "Kanne Cold Brew",
+          "cold_brew_to_mix": "Cold Brew To Mix",
+          "cortado": "Cortado",
+          "doppio_plus": "Doppio+",
+          "double_espresso": "2 Espressi",
+          "espresso": "Espresso",
+          "espresso_macchiato": "Espresso Macchiato",
+          "espresso_soul": "Espresso SOUL",
+          "flat_white": "Flat White",
+          "hot_milk": "Aufgeschäumte Milch",
+          "hot_water": "Heißwasser",
+          "iced_americano": "Cold Americano",
+          "iced_caffe_latte": "Cold Caffè Latte",
+          "iced_cappuccino": "Cold Cappuccino",
+          "iced_cappuccino_mix": "Cold Cappuccino Mix",
+          "iced_cold_milk": "Kalte Milch",
+          "iced_flat_white": "Cold Flat White",
+          "iced_latte_macchiato": "Cold Latte Macchiato",
+          "latte_macchiato": "Latte Macchiato",
+          "long_coffee": "Lang",
+          "mug_americano": "Tasse Americano",
+          "mug_caffe_latte": "Tasse Caffè Latte",
+          "mug_cappuccino": "Tasse Cappuccino",
+          "mug_cappuccino_mix": "Tasse Cappuccino Mix",
+          "mug_flat_white": "Tasse Flat White",
+          "mug_hot_milk": "Tasse heiße Milch",
+          "mug_iced_americano": "Tasse Cold Americano",
+          "mug_iced_caffe_latte": "Tasse Cold Caffè Latte",
+          "mug_iced_cappuccino": "Tasse Cold Cappuccino",
+          "mug_iced_cappuccino_mix": "Tasse Cold Cappuccino Mix",
+          "mug_iced_cold_milk": "Tasse Cold Milk",
+          "mug_iced_flat_white": "Tasse Cold Flat White",
+          "mug_iced_latte_macchiato": "Tasse Cold Latte Macchiato",
+          "mug_latte_macchiato": "Tasse Latte Macchiato",
+          "mug_over_ice": "Tasse Over Ice",
+          "over_ice_espresso": "Over-Iced Cold Espresso",
+          "tea": "Tee-Funktion"
+        }
       },
       "bean_system": {
         "name": "Bohnensystem"
@@ -39,11 +92,21 @@
     },
     "button": {
       "cmd_americano": { "name": "Zubereiten: Americano" },
+      "cmd_brew_over_ice": { "name": "Zubereiten: Kalter Kaffee" },
       "cmd_caffe_latte": { "name": "Zubereiten: Caffè Latte" },
       "cmd_cappuccino": { "name": "Zubereiten: Cappuccino" },
       "cmd_cappuccino_mix": { "name": "Zubereiten: Cappuccino Mix" },
       "cmd_cappuccino_plus": { "name": "Zubereiten: Cappuccino Plus" },
       "cmd_coffee": { "name": "Zubereiten: Kaffee" },
+      "cmd_coffee_pot": { "name": "Zubereiten: Kaffeekanne" },
+      "cmd_cold_brew": { "name": "Zubereiten: Cold Brew" },
+      "cmd_cold_brew_cappuccino": { "name": "Zubereiten: Cold Brew Cappuccino" },
+      "cmd_cold_brew_cappuccino_mug": { "name": "Zubereiten: To-Go-Becher Cold Brew Cappuccino" },
+      "cmd_cold_brew_latte": { "name": "Zubereiten: Cold Brew Latte" },
+      "cmd_cold_brew_latte_mug": { "name": "Zubereiten: To-Go-Becher Cold Brew Latte" },
+      "cmd_cold_brew_mug": { "name": "Zubereiten: To-Go-Becher Cold Brew" },
+      "cmd_cold_brew_pot": { "name": "Zubereiten: Kanne Cold Brew" },
+      "cmd_cold_brew_to_mix": { "name": "Zubereiten: Cold Brew to Mix" },
       "cmd_cortado": { "name": "Zubereiten: Cortado" },
       "cmd_doppio_plus": { "name": "Zubereiten: Doppio Plus" },
       "cmd_double_espresso": { "name": "Zubereiten: Doppelter Espresso" },
@@ -53,8 +116,32 @@
       "cmd_flat_white": { "name": "Zubereiten: Flat White" },
       "cmd_hot_milk": { "name": "Zubereiten: Heiße Milch" },
       "cmd_hot_water": { "name": "Zubereiten: Heißes Wasser" },
+      "cmd_iced_americano": { "name": "Zubereiten: Cold Americano" },
+      "cmd_iced_caffe_latte": { "name": "Zubereiten: Cold Caffè Latte" },
+      "cmd_iced_cappuccino": { "name": "Zubereiten: Cold Cappuccino" },
+      "cmd_iced_cappuccino_mix": { "name": "Zubereiten: Cold Cappuccino Mix" },
+      "cmd_iced_cold_milk": { "name": "Zubereiten: Kalte Milch" },
+      "cmd_iced_flat_white": { "name": "Zubereiten: Cold Flat White" },
+      "cmd_iced_latte_macchiato": { "name": "Zubereiten: Cold Latte Macchiato" },
       "cmd_latte_macchiato": { "name": "Zubereiten: Latte Macchiato" },
       "cmd_long_coffee": { "name": "Zubereiten: Langer Kaffee" },
+      "cmd_mug_americano": { "name": "Zubereiten: To-Go-Becher Americano" },
+      "cmd_mug_caffe_latte": { "name": "Zubereiten: To-Go-Becher Caffè Latte" },
+      "cmd_mug_cappuccino": { "name": "Zubereiten: To-Go-Becher Cappuccino" },
+      "cmd_mug_cappuccino_mix": { "name": "Zubereiten: To-Go-Becher Cappuccino Mix" },
+      "cmd_mug_flat_white": { "name": "Zubereiten: To-Go-Becher Flat White" },
+      "cmd_mug_hot_milk": { "name": "Zubereiten: To-Go-Becher Heiße Milch" },
+      "cmd_mug_iced_americano": { "name": "Zubereiten: To-Go-Becher Cold Americano" },
+      "cmd_mug_iced_caffe_latte": { "name": "Zubereiten: To-Go-Becher Cold Caffè Latte" },
+      "cmd_mug_iced_cappuccino": { "name": "Zubereiten: To-Go-Becher Cold Cappuccino" },
+      "cmd_mug_iced_cappuccino_mix": { "name": "Zubereiten: To-Go-Becher Cold Cappuccino Mix" },
+      "cmd_mug_iced_cold_milk": { "name": "Zubereiten: To-Go-Becher Kalte Milch" },
+      "cmd_mug_iced_flat_white": { "name": "Zubereiten: To-Go-Becher Cold Flat White" },
+      "cmd_mug_iced_latte_macchiato": { "name": "Zubereiten: To-Go-Becher Cold Latte Macchiato" },
+      "cmd_mug_latte_macchiato": { "name": "Zubereiten: To-Go-Becher Latte Macchiato" },
+      "cmd_mug_over_ice": { "name": "Zubereiten: To-Go-Becher Kalter Kaffee" },
+      "cmd_over_ice_espresso": { "name": "Zubereiten: Kalter Espresso" },
+      "cmd_tea": { "name": "Zubereiten: Tee" },
       "cmd_stop": { "name": "Stopp Zubereitung" }
     },
     "number": {
@@ -187,6 +274,42 @@
           "latte_crema_hot_clean": "LatteCrema-Karaffe (Reinigungsposition)",
           "latte_crema_cool": "LatteCrema-Karaffe (kalt)",
           "latte_crema_cool_clean": "LatteCrema-Karaffe (kalt, Reinigungsposition)"
+        }
+      }
+    }
+  },
+  "services": {
+    "brew": {
+      "name": "Brühen",
+      "description": "Brüht ein Getränk. Nicht angegebene Mengen kommen aus dem Rezept im aktiven Profil; angegebene Mengen werden auf die Grenzen der Maschine begrenzt. Auf der Maschine wird nichts gespeichert.",
+      "fields": {
+        "device_id": {
+          "name": "Maschine",
+          "description": "Die Kaffeemaschine."
+        },
+        "beverage": {
+          "name": "Getränk",
+          "description": "Getränkename oder Befehl (z. B. cappuccino), Name eines eigenen Rezepts oder Getränke-ID."
+        },
+        "coffee": {
+          "name": "Kaffee",
+          "description": "Kaffeemenge in ml."
+        },
+        "taste": {
+          "name": "Stärke",
+          "description": "Kaffeestärke (Aroma)."
+        },
+        "milk": {
+          "name": "Milch",
+          "description": "Milch in Sekunden."
+        },
+        "water": {
+          "name": "Wasser",
+          "description": "Heißwasser in ml."
+        },
+        "tea_temperature": {
+          "name": "Tee-Temperatur",
+          "description": "Stufe der Tee-Temperatur."
         }
       }
     }
