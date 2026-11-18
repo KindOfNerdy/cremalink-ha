@@ -70,6 +70,8 @@ def make_device(**overrides):
         get_commands=overrides.get("get_commands", list),
         command_map=overrides.get("command_map", {}),
         beverage_catalog=overrides.get("beverage_catalog", lambda **_: []),
+        custom_recipe_names=overrides.get("custom_recipe_names", dict),
+        custom_recipe_icons=overrides.get("custom_recipe_icons", dict),
         favorite_beverages=overrides.get(
             "favorite_beverages", lambda profile_slot=None: None
         ),
