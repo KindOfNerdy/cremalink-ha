@@ -110,6 +110,8 @@
       "alarm_spi_comm_problem": { "name": "SPI-Kommunikationsfehler" }
     },
     "sensor": {
+      "cremalink_last_report": { "name": "Letzte Meldung" },
+      "cremalink_statistics_updated": { "name": "Zählerstand von" },
       "cremalink_progress_percent": { "name": "Fortschritt" },
       "stat_descales": { "name": "Entkalkungen" },
       "stat_water_total": { "name": "Wasser gesamt" },

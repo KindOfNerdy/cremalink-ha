@@ -1,12 +1,14 @@
 """Sensor platform for the Cremalink integration."""
 
+from datetime import UTC, datetime
+
 from cremalink.ecam.statistics import CLOUD_COUNTER_CANDIDATES, STAT_LABELS
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.const import PERCENTAGE, UnitOfVolume
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfVolume
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -101,6 +103,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
             if map_names and not any(c in map_names for c in candidates):
                 continue
             entities.append(CremalinkCloudCounterSensor(coordinator, entry, logical))
+
+    # Freshness of what the entities show (diagnostic).
+    entities.append(CremalinkLastReportSensor(coordinator, entry))
+    if statistics_source == "cloud_counters" and connection_type == CONNECTION_CLOUD:
+        entities.append(CremalinkStatisticsUpdatedSensor(coordinator, entry))
 
     async_add_entities(entities)
 
@@ -203,6 +210,76 @@ class CremalinkSensor(_CremalinkEntityBase, SensorEntity, RestoreEntity):
             self._standby_cache = value
             return value
         return self._restored
+
+
+def _as_utc(value):
+    """Epoch seconds or a datetime (naive = local time) as an aware datetime."""
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value, UTC)
+    if isinstance(value, datetime):
+        return value.astimezone(UTC) if value.tzinfo else value.astimezone()
+    return None
+
+
+class _TimestampSensor(_CremalinkEntityBase, SensorEntity, RestoreEntity):
+    """Diagnostic timestamp that survives restarts.
+
+    The last known time stays visible while the machine is in standby or
+    unreachable — that is exactly when "how old is this?" matters.
+    """
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry, key):
+        super().__init__(coordinator, entry)
+        self._attr_translation_key = f"cremalink_{key}"
+        self._attr_unique_id = f"{entry.entry_id}_{key}"
+        self._restored = None
+
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is None or last.state in ("unknown", "unavailable"):
+            return
+        try:
+            self._restored = datetime.fromisoformat(last.state)
+        except ValueError:
+            return
+
+    def _current(self):
+        raise NotImplementedError
+
+    @property
+    def native_value(self):
+        value = _as_utc(self._current())
+        if value is not None:
+            self._restored = value
+        return self._restored
+
+    @property
+    def available(self):
+        return self._restored is not None or super().available
+
+
+class CremalinkLastReportSensor(_TimestampSensor):
+    """When the machine last reported its status."""
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry, "last_report")
+
+    def _current(self):
+        return getattr(self.coordinator.data, "received_at", None)
+
+
+class CremalinkStatisticsUpdatedSensor(_TimestampSensor):
+    """When the cloud last received the machine's counters."""
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry, "statistics_updated")
+
+    def _current(self):
+        return getattr(self.coordinator.statistics, "data_updated_at", None)
 
 
 class _StatisticsSensorBase(_CremalinkEntityBase, RestoreEntity):

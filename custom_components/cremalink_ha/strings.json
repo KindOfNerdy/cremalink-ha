@@ -226,6 +226,8 @@
       "alarm_spi_comm_problem": { "name": "SPI Comm Problem" }
     },
     "sensor": {
+      "cremalink_last_report": { "name": "Last report" },
+      "cremalink_statistics_updated": { "name": "Statistics updated" },
       "cremalink_progress_percent": { "name": "Progress" },
       "stat_descales": { "name": "Descales" },
       "stat_water_total": { "name": "Water Total" },
