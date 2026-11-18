@@ -59,7 +59,7 @@
     },
     "number": {
       "param_coffee": { "name": "Kaffeemenge" },
-      "param_taste": { "name": "Geschmack" },
+      "param_taste": { "name": "Stärke" },
       "param_milk": { "name": "Milch" },
       "param_the_temp": { "name": "Temperatur" },
       "param_water": { "name": "Wasser" }
