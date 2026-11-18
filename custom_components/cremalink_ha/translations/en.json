@@ -262,7 +262,7 @@
     },
     "number": {
       "param_coffee": { "name": "Coffee Amount" },
-      "param_taste": { "name": "Taste" },
+      "param_taste": { "name": "Strength" },
       "param_milk": { "name": "Milk" },
       "param_the_temp": { "name": "Temperature" },
       "param_water": { "name": "Water" }
