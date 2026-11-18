@@ -46,6 +46,46 @@ class TestRecipeSelect:
         assert recipe.options == ["Espresso", "Espresso Soul"]
         assert recipe.current_option is None
 
+    async def test_option_ids_exposed_in_menu_order(self, hass):
+        _, entities = await _setup(
+            hass,
+            beverage_catalog=lambda **_: _catalog(0x32, 0x01, 0xE6),
+            brew_entry=_names({0x32: "Iced", 0x01: "Espresso", 0xE6: "Mine"}),
+        )
+        attrs = _recipe_select(entities).extra_state_attributes
+        assert list(attrs["option_beverages"].items()) == [
+            ("Iced", 0x32),
+            ("Espresso", 0x01),
+            ("Mine", 0xE6),
+        ]
+        assert (
+            "option_beverages"
+            in select_mod.CremalinkRecipeSelect._unrecorded_attributes
+        )
+
+    async def test_favourites_exposed_when_known(self, hass):
+        _, entities = await _setup(
+            hass,
+            beverage_catalog=lambda **_: _catalog(0x01, 0x02),
+            brew_entry=_names({0x01: "Espresso", 0x02: "Coffee"}),
+            favorite_beverages=lambda profile_slot=None: [2, 1],
+        )
+        attrs = _recipe_select(entities).extra_state_attributes
+        assert attrs["favorite_beverages"] == [2, 1]
+        assert (
+            "favorite_beverages"
+            in select_mod.CremalinkRecipeSelect._unrecorded_attributes
+        )
+
+    async def test_favourites_absent_when_unknown(self, hass):
+        _, entities = await _setup(
+            hass,
+            beverage_catalog=lambda **_: _catalog(0x01),
+            brew_entry=_names({0x01: "Espresso"}),
+        )
+        attrs = _recipe_select(entities).extra_state_attributes
+        assert "favorite_beverages" not in attrs
+
     async def test_empty_catalogue_no_options(self, hass):
         _, entities = await _setup(hass, beverage_catalog=lambda **_: [])
         recipe = _recipe_select(entities)
