@@ -313,6 +313,8 @@
       "alarm_spi_comm_problem": { "name": "SPI Comm Problem" }
     },
     "sensor": {
+      "cremalink_last_report": { "name": "Last report" },
+      "cremalink_statistics_updated": { "name": "Statistics updated" },
       "cremalink_progress_percent": { "name": "Progress" },
       "firmware_wifi_module": { "name": "Wi-Fi module firmware" },
       "stat_descales": { "name": "Descales" },

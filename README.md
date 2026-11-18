@@ -70,6 +70,11 @@ integration exposes:
   plus the grounds container, descale and filter percentages exactly as
   the machine publishes them, and aborted, iced and cold brew totals
   where the map lists those datapoints.
+- **Freshness sensors** (diagnostic timestamps): "Last report" is when the
+  machine last reported its status; on `cloud_counters` maps "Statistics
+  updated" shows when the cloud last received the counters. Counters
+  reach the cloud only now and then, so this tells how old they are.
+  Both keep their last value while the machine sleeps or is unreachable.
 - **Profile select**: lists the occupied machine profiles by name;
   changing it sends a session-gated `0xA9` write — the entity only
   shows machine-confirmed selections. The machine's own selected
