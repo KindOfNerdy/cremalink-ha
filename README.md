@@ -66,7 +66,10 @@ integration exposes:
   filter changes, and total water (litres). Fetched on a slow ~5-minute
   lane; cloud entries on `native` maps get none (the Ayla cache is
   stale there). `cloud_counters` maps (e.g. Eletta-family machines
-  without LAN support) expose their counters on cloud entries instead.
+  without LAN support) expose their counters on cloud entries instead,
+  plus the grounds container, descale and filter percentages exactly as
+  the machine publishes them, and aborted, iced and cold brew totals
+  where the map lists those datapoints.
 - **Profile select**: lists the occupied machine profiles by name;
   changing it sends a session-gated `0xA9` write — the entity only
   shows machine-confirmed selections. The machine's own selected
