@@ -208,3 +208,89 @@ class TestBrewAction:
                 DOMAIN, "brew", {"device_id": device_id, "beverage": 7}, blocking=True
             )
         assert brewed == []
+
+
+async def _favorites_setup(hass, *, status="ready", confirmed=True):
+    written = []
+    device = make_device(command_map=COMMAND_MAP)
+    device.set_favorite_beverages = (
+        lambda ids, profile=None: written.append((ids, profile)) or confirmed
+    )
+    device.custom_recipe_names = lambda: CUSTOM_NAMES
+    entry = make_entry()
+    await setup_entities(
+        hass, entry, device, select_mod, FakeMonitorData(status_name=status)
+    )
+    device_entry = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={(DOMAIN, entry.entry_id)}
+    )
+    async_setup_services(hass)
+    return device_entry.id, written
+
+
+class TestSetFavoritesAction:
+    async def test_names_commands_and_recipes_become_ids_in_order(self, hass):
+        device_id, written = await _favorites_setup(hass)
+
+        await hass.services.async_call(
+            DOMAIN,
+            "set_favorites",
+            {
+                "device_id": device_id,
+                "favorites": ["cappuccino", "Latte XL", "espresso"],
+            },
+            blocking=True,
+        )
+
+        assert written == [([7, 230, 1], None)]
+
+    async def test_profile_is_passed_on(self, hass):
+        device_id, written = await _favorites_setup(hass)
+
+        await hass.services.async_call(
+            DOMAIN,
+            "set_favorites",
+            {"device_id": device_id, "favorites": ["espresso"], "profile": 2},
+            blocking=True,
+        )
+
+        assert written == [([1], 2)]
+
+    async def test_standby_is_refused_without_writing(self, hass):
+        device_id, written = await _favorites_setup(hass, status="in_standby")
+
+        with pytest.raises(HomeAssistantError, match="not ready"):
+            await hass.services.async_call(
+                DOMAIN,
+                "set_favorites",
+                {"device_id": device_id, "favorites": ["espresso"]},
+                blocking=True,
+            )
+        assert written == []
+
+    @pytest.mark.parametrize(
+        "favorites",
+        [["espresso", "espresso"], [f"{i}" for i in range(1, 14)], ["no such drink"]],
+    )
+    async def test_invalid_lists_are_refused_without_writing(self, hass, favorites):
+        device_id, written = await _favorites_setup(hass)
+
+        with pytest.raises(ServiceValidationError):
+            await hass.services.async_call(
+                DOMAIN,
+                "set_favorites",
+                {"device_id": device_id, "favorites": favorites},
+                blocking=True,
+            )
+        assert written == []
+
+    async def test_unconfirmed_write_is_an_error(self, hass):
+        device_id, written = await _favorites_setup(hass, confirmed=False)
+
+        with pytest.raises(HomeAssistantError, match="did not confirm"):
+            await hass.services.async_call(
+                DOMAIN,
+                "set_favorites",
+                {"device_id": device_id, "favorites": ["espresso"]},
+                blocking=True,
+            )

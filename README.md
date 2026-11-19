@@ -135,6 +135,21 @@ integration exposes:
     milk: 25
   ```
 
+- **Favourites action** (`cremalink_ha.set_favorites`): writes the favourite
+  drinks of a profile (`profile`, default: the active one). Give the
+  machine (`device_id`) and `favorites`, the complete list in favourite
+  order, first one first (at most 12; drink name, command, custom recipe
+  name or beverage id). The machine replaces its list and the action
+  reports an error if it does not confirm. The current list is the
+  `favorite_beverages` attribute of the recipe select.
+
+  ```yaml
+  action: cremalink_ha.set_favorites
+  data:
+    device_id: <your machine>
+    favorites: [coffee, latte_macchiato, flat_white]
+  ```
+
 > **Migrating from per-drink buttons:** automations or dashboards that
 > called `button.press` on `button.brew_espresso` (etc.) need updating:
 > call `select.select_option` on `select.<machine>_recipe` with the

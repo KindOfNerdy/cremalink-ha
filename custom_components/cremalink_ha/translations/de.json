@@ -311,6 +311,24 @@
           "description": "Stufe der Tee-Temperatur."
         }
       }
+    },
+    "set_favorites": {
+      "name": "Favoriten setzen",
+      "description": "Schreibt die Favoriten eines Profils: die komplette Liste in Favoriten-Reihenfolge (höchstens 12). Die Maschine ersetzt ihre bisherige Liste. Getränke per Name, Befehl, Name eines eigenen Rezepts oder Getränke-ID.",
+      "fields": {
+        "device_id": {
+          "name": "Maschine",
+          "description": "Die Kaffeemaschine."
+        },
+        "favorites": {
+          "name": "Favoriten",
+          "description": "Die Getränke in Favoriten-Reihenfolge, das erste zuerst."
+        },
+        "profile": {
+          "name": "Profil",
+          "description": "Profil-Slot 1–4. Standard: das aktive Profil."
+        }
+      }
     }
   }
 }
