@@ -88,6 +88,14 @@
           "level_3": "Stufe 3",
           "level_4": "Stufe 4"
         }
+      },
+      "setting_temperature": {
+        "name": "Kaffeetemperatur",
+        "state": {
+          "low": "Niedrig",
+          "medium": "Mittel",
+          "high": "Hoch"
+        }
       }
     },
     "button": {

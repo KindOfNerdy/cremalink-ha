@@ -120,6 +120,27 @@ class TestWaterHardness:
         assert writes == [("water_hardness", 2)]
 
 
+class TestCoffeeTemperature:
+    async def test_options_and_current(self, hass):
+        _, entities = await _setup(hass, get_settings=lambda **_: {"temperature": 1})
+        sel = _by_uid(entities, "entry1_setting_temperature")
+        assert sel.options == ["low", "medium", "high"]
+        assert sel.current_option == "medium"
+
+    async def test_select_writes_index(self, hass):
+        writes = []
+        _, entities = await _setup(
+            hass, set_setting=lambda key, idx: writes.append((key, idx)) or True
+        )
+        sel = _by_uid(entities, "entry1_setting_temperature")
+        await sel.async_select_option("high")
+        assert writes == [("temperature", 2)]
+
+    async def test_flag_off_creates_no_select(self, hass):
+        _, entities = await _setup(hass, capabilities={"globalTemperature": False})
+        assert "entry1_setting_temperature" not in {e.unique_id for e in entities}
+
+
 class TestCapabilityGating:
     async def test_unsupported_capability_creates_no_select(self, hass):
         _, entities = await _setup(
