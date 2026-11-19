@@ -570,6 +570,44 @@
           "description": "Custom recipe 1 to 6."
         }
       }
+    },
+    "save_drink": {
+      "name": "Save drink in profile",
+      "description": "Keeps changed values of a standard drink in the active profile, like “save” in the Coffee Link app. For cold drinks the coffee, milk and water amounts stay fixed. With brew on, it is poured afterwards.",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "The coffee machine."
+        },
+        "beverage": {
+          "name": "Drink",
+          "description": "Name, command (e.g. cappuccino) or beverage id."
+        },
+        "coffee": {
+          "name": "Coffee (ml)",
+          "description": "Coffee amount."
+        },
+        "taste": {
+          "name": "Strength",
+          "description": "Coffee strength."
+        },
+        "milk": {
+          "name": "Milk (s)",
+          "description": "Milk time."
+        },
+        "water": {
+          "name": "Water (ml)",
+          "description": "Water amount."
+        },
+        "tea_temperature": {
+          "name": "Tea temperature",
+          "description": "Temperature for tea."
+        },
+        "brew": {
+          "name": "Brew",
+          "description": "Pour it afterwards."
+        }
+      }
     }
   }
 }

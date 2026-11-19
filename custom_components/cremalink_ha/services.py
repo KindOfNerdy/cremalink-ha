@@ -37,6 +37,7 @@ from cremalink.ecam.custom_recipe import (
     compose_custom_recipe,
     describe_custom_recipe,
 )
+from cremalink.ecam.builder import beverage_type
 from cremalink.ecam.params import PARAMS, to_raw
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
@@ -54,6 +55,7 @@ SERVICE_REFRESH_RECIPES = "refresh_recipes"
 SERVICE_SAVE_RECIPE = "save_recipe"
 SERVICE_DELETE_RECIPE = "delete_recipe"
 SERVICE_GET_RECIPE = "get_recipe"
+SERVICE_SAVE_DRINK = "save_drink"
 ATTR_DEVICE_ID = "device_id"
 ATTR_BEVERAGE = "beverage"
 ATTR_FAVORITES = "favorites"
@@ -105,6 +107,15 @@ SAVE_RECIPE_SCHEMA = vol.Schema(
         vol.Optional("froth"): vol.All(vol.Coerce(int), vol.Range(min=0, max=2)),
         vol.Optional("milk_first"): cv.boolean,
         vol.Optional("water"): vol.All(vol.Coerce(int), vol.Range(min=0, max=300)),
+    }
+)
+
+SAVE_DRINK_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_DEVICE_ID): cv.string,
+        vol.Required(ATTR_BEVERAGE): vol.Any(cv.positive_int, cv.string),
+        vol.Optional(ATTR_BREW, default=False): cv.boolean,
+        **{vol.Optional(field): vol.Coerce(float) for field in AMOUNT_FIELDS},
     }
 )
 
@@ -344,6 +355,67 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
     coordinator.async_update_listeners()
 
 
+#: Amounts the app does not save for cold and cold to-go drinks (fixed by the machine).
+COLD_FIXED_FIELDS = ("coffee", "milk", "water")
+
+
+async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
+    """Keep changed values of a standard drink in the active profile (app: save)."""
+    data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
+    device, coordinator = data["device"], data["coordinator"]
+    _ready_or_raise(coordinator, idle=True)
+    beverage_id = resolve_beverage(device, call.data[ATTR_BEVERAGE])
+    label = str(call.data[ATTR_BEVERAGE])
+    if 230 <= beverage_id <= 235:
+        raise ServiceValidationError(f"{label} is a custom recipe: use save_recipe.")
+    if beverage_type(beverage_id) in ("cold", "to_go_cold"):
+        fixed = [field for field in COLD_FIXED_FIELDS if field in call.data]
+        if fixed:
+            raise ServiceValidationError(
+                f"{label}: the machine keeps {', '.join(fixed)} fixed for cold drinks."
+            )
+    amounts = {
+        AMOUNT_FIELDS[field]: call.data[field]
+        for field in AMOUNT_FIELDS
+        if field in call.data
+    }
+    brew = call.data[ATTR_BREW]
+
+    def _save() -> bool:
+        params = device.recipe_params(beverage_id)
+        if params.source != "profile":
+            raise HomeAssistantError(
+                f"Could not read the stored recipe for {label}; try again."
+            )
+        values = dict(params.values)
+        values.update(build_overrides(params, amounts, label))
+        if not device.save_profile_recipe(beverage_id, values):
+            return False
+        if brew:
+            # The app's two steps: save, then brew the now stored recipe.
+            device.brew(beverage_id)
+        return True
+
+    try:
+        confirmed = await hass.async_add_executor_job(_save)
+    except (ServiceValidationError, HomeAssistantError):
+        raise
+    except ValueError as err:
+        raise ServiceValidationError(str(err)) from err
+    except (OSError, RuntimeError) as err:
+        raise HomeAssistantError(f"Could not save {label}: {err}") from err
+    if not confirmed:
+        raise HomeAssistantError(
+            f"The machine did not confirm {label}; check it on the machine."
+        )
+    session = data.get("recipe_session")
+    if session is not None and session.selected_beverage == beverage_id:
+        session.select(beverage_id)  # reload: the staged changes are now saved
+    coordinator.async_update_listeners()
+    if brew:
+        await coordinator.async_request_refresh()
+
+
 async def _async_get_recipe(hass: HomeAssistant, call: ServiceCall) -> dict:
     """The stored ingredients of a custom place (for the card's form)."""
     data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
@@ -411,6 +483,9 @@ def async_setup_services(hass: HomeAssistant) -> None:
     async def _handle_save_recipe(call: ServiceCall) -> None:
         await _async_save_recipe(hass, call)
 
+    async def _handle_save_drink(call: ServiceCall) -> None:
+        await _async_save_drink(hass, call)
+
     async def _handle_get_recipe(call: ServiceCall) -> dict:
         return await _async_get_recipe(hass, call)
 
@@ -423,6 +498,9 @@ def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, SERVICE_BREW, _handle_brew, schema=BREW_SCHEMA)
     hass.services.async_register(
         DOMAIN, SERVICE_SAVE_RECIPE, _handle_save_recipe, schema=SAVE_RECIPE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SAVE_DRINK, _handle_save_drink, schema=SAVE_DRINK_SCHEMA
     )
     hass.services.async_register(
         DOMAIN,

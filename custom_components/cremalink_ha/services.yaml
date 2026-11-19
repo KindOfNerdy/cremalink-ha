@@ -166,3 +166,48 @@ delete_recipe:
           max: 6
           mode: box
 
+save_drink:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: cremalink_ha
+    beverage:
+      required: true
+      selector:
+        text:
+    coffee:
+      selector:
+        number:
+          min: 0
+          max: 500
+          mode: box
+    taste:
+      selector:
+        number:
+          min: 0
+          max: 5
+          mode: box
+    milk:
+      selector:
+        number:
+          min: 0
+          max: 300
+          mode: box
+    water:
+      selector:
+        number:
+          min: 0
+          max: 500
+          mode: box
+    tea_temperature:
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    brew:
+      default: false
+      selector:
+        boolean:

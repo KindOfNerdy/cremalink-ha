@@ -444,6 +444,44 @@
           "description": "Eigenes Rezept 1 bis 6."
         }
       }
+    },
+    "save_drink": {
+      "name": "Getränk im Profil speichern",
+      "description": "Speichert geänderte Werte eines Standardgetränks im aktiven Profil, wie „Speichern“ in der Coffee-Link-App. Bei kalten Getränken bleiben Kaffee-, Milch- und Wassermenge fest. Mit „Zubereiten“ wird es danach ausgegeben.",
+      "fields": {
+        "device_id": {
+          "name": "Maschine",
+          "description": "Die Kaffeemaschine."
+        },
+        "beverage": {
+          "name": "Getränk",
+          "description": "Name, Befehl (z. B. cappuccino) oder Getränke-ID."
+        },
+        "coffee": {
+          "name": "Kaffee (ml)",
+          "description": "Kaffeemenge."
+        },
+        "taste": {
+          "name": "Stärke",
+          "description": "Kaffeestärke."
+        },
+        "milk": {
+          "name": "Milch (s)",
+          "description": "Milchdauer."
+        },
+        "water": {
+          "name": "Wasser (ml)",
+          "description": "Wassermenge."
+        },
+        "tea_temperature": {
+          "name": "Tee-Temperatur",
+          "description": "Temperatur für Tee."
+        },
+        "brew": {
+          "name": "Zubereiten",
+          "description": "Danach ausgeben."
+        }
+      }
     }
   }
 }

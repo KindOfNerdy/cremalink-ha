@@ -184,6 +184,13 @@ integration exposes:
     water: 50
   ```
 
+- **Save drink action** (`cremalink_ha.save_drink`): keeps changed values of a standard
+  drink in the active profile, like *save* on the Coffee Link app's brew screen. Give
+  `beverage` and the amounts to change (`coffee`, `taste`, `milk`, `water`,
+  `tea_temperature`; clamped to the drink's limits); `brew: true` pours it afterwards.
+  For cold and cold to-go drinks the machine keeps the coffee, milk and water amounts
+  fixed, so those are refused there. Only while the machine is ready and idle.
+
 - **Recipe list refresh**: the list of recipes (names, pictures, favorites) is
   read from the cloud again every 30 minutes (one request, the machine is not
   asked), so recipes created or renamed on the machine or in the app show up
