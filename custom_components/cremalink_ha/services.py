@@ -9,6 +9,10 @@ recipe picker with its sliders.
 ``cremalink_ha.set_favorites`` writes the profile's favourite drinks: the
 complete list in favourite order, by drink name, command or id.
 
+``cremalink_ha.save_recipe`` creates or changes one of the six custom recipes
+(name, picture, amounts; optionally pours it), ``cremalink_ha.delete_recipe``
+empties a slot.
+
 ``cremalink_ha.refresh_recipes`` reads the recipe list (names, pictures,
 favorites) from the cloud again right now; it is also done every few minutes.
 """
@@ -39,10 +43,17 @@ _LOGGER = logging.getLogger(__name__)
 SERVICE_BREW = "brew"
 SERVICE_SET_FAVORITES = "set_favorites"
 SERVICE_REFRESH_RECIPES = "refresh_recipes"
+SERVICE_SAVE_RECIPE = "save_recipe"
+SERVICE_DELETE_RECIPE = "delete_recipe"
 ATTR_DEVICE_ID = "device_id"
 ATTR_BEVERAGE = "beverage"
 ATTR_FAVORITES = "favorites"
 ATTR_PROFILE = "profile"
+ATTR_SLOT = "slot"
+ATTR_NAME = "name"
+ATTR_ICON = "icon"
+ATTR_TEMPLATE = "template"
+ATTR_BREW = "brew"
 
 #: Action field -> recipe parameter id (display units, see ``PARAMS``).
 AMOUNT_FIELDS = {
@@ -69,6 +80,25 @@ SET_FAVORITES_SCHEMA = vol.Schema(
             cv.ensure_list, [vol.Any(cv.positive_int, cv.string)]
         ),
         vol.Optional(ATTR_PROFILE): cv.positive_int,
+    }
+)
+
+SAVE_RECIPE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_DEVICE_ID): cv.string,
+        vol.Required(ATTR_SLOT): vol.All(vol.Coerce(int), vol.Range(min=1, max=6)),
+        vol.Required(ATTR_NAME): vol.All(cv.string, vol.Length(min=1, max=10)),
+        vol.Required(ATTR_ICON): vol.All(vol.Coerce(int), vol.Range(min=0, max=25)),
+        vol.Optional(ATTR_TEMPLATE): vol.Any(cv.positive_int, cv.string),
+        vol.Optional(ATTR_BREW, default=False): cv.boolean,
+        **{vol.Optional(field): vol.Coerce(float) for field in AMOUNT_FIELDS},
+    }
+)
+
+DELETE_RECIPE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_DEVICE_ID): cv.string,
+        vol.Required(ATTR_SLOT): vol.All(vol.Coerce(int), vol.Range(min=1, max=6)),
     }
 )
 
@@ -209,6 +239,78 @@ async def _async_set_favorites(hass: HomeAssistant, call: ServiceCall) -> None:
     coordinator.async_update_listeners()
 
 
+def _ready_or_raise(coordinator, *, idle: bool = False) -> None:
+    status = getattr(coordinator.data, "status_name", None)
+    if status in NOT_READY_STATUSES:
+        raise HomeAssistantError("The machine is not ready; turn it on first.")
+    if idle and getattr(coordinator.data, "is_busy", False):
+        raise HomeAssistantError("The machine is busy; wait until it is ready.")
+
+
+async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
+    data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
+    device, coordinator = data["device"], data["coordinator"]
+    brew = call.data[ATTR_BREW]
+    _ready_or_raise(coordinator, idle=brew)
+    slot = call.data[ATTR_SLOT]
+    name, icon = call.data[ATTR_NAME], call.data[ATTR_ICON]
+    if ATTR_TEMPLATE in call.data:
+        template_id = resolve_beverage(device, call.data[ATTR_TEMPLATE])
+    else:
+        template_id = 229 + slot  # change the recipe that is already in the slot
+    amounts = {
+        AMOUNT_FIELDS[field]: call.data[field]
+        for field in AMOUNT_FIELDS
+        if field in call.data
+    }
+
+    def _save() -> bool:
+        params = device.recipe_params(template_id)
+        if params.source != "profile":
+            raise HomeAssistantError(
+                "Could not read the recipe to start from; try again."
+            )
+        values = dict(params.values)
+        values.update(build_overrides(params, amounts, name))
+        return device.save_custom_recipe(slot, name, icon, values, brew=brew)
+
+    try:
+        confirmed = await hass.async_add_executor_job(_save)
+    except (ServiceValidationError, HomeAssistantError):
+        raise
+    except ValueError as err:
+        raise ServiceValidationError(str(err)) from err
+    except (OSError, RuntimeError) as err:
+        raise HomeAssistantError(f"Could not save the recipe: {err}") from err
+    if not confirmed:
+        raise HomeAssistantError(
+            "The machine did not confirm the recipe; check it on the machine."
+        )
+    if (notify := data.get("catalog_changed")) is not None:
+        notify()
+    coordinator.async_update_listeners()
+
+
+async def _async_delete_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
+    data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
+    device, coordinator = data["device"], data["coordinator"]
+    _ready_or_raise(coordinator)
+    slot = call.data[ATTR_SLOT]
+    try:
+        confirmed = await hass.async_add_executor_job(device.delete_custom_recipe, slot)
+    except ValueError as err:
+        raise ServiceValidationError(str(err)) from err
+    except (OSError, RuntimeError) as err:
+        raise HomeAssistantError(f"Could not delete the recipe: {err}") from err
+    if not confirmed:
+        raise HomeAssistantError(
+            "The machine did not confirm the deletion; check it on the machine."
+        )
+    if (notify := data.get("catalog_changed")) is not None:
+        notify()
+    coordinator.async_update_listeners()
+
+
 async def _async_refresh_recipes(hass: HomeAssistant, call: ServiceCall) -> None:
     data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
     refresh = data.get("refresh_catalog")
@@ -228,10 +330,25 @@ def async_setup_services(hass: HomeAssistant) -> None:
     async def _handle_set_favorites(call: ServiceCall) -> None:
         await _async_set_favorites(hass, call)
 
+    async def _handle_save_recipe(call: ServiceCall) -> None:
+        await _async_save_recipe(hass, call)
+
+    async def _handle_delete_recipe(call: ServiceCall) -> None:
+        await _async_delete_recipe(hass, call)
+
     async def _handle_refresh_recipes(call: ServiceCall) -> None:
         await _async_refresh_recipes(hass, call)
 
     hass.services.async_register(DOMAIN, SERVICE_BREW, _handle_brew, schema=BREW_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, SERVICE_SAVE_RECIPE, _handle_save_recipe, schema=SAVE_RECIPE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_DELETE_RECIPE,
+        _handle_delete_recipe,
+        schema=DELETE_RECIPE_SCHEMA,
+    )
     hass.services.async_register(
         DOMAIN,
         SERVICE_REFRESH_RECIPES,

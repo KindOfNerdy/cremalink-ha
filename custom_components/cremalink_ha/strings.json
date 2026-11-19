@@ -492,6 +492,70 @@
           "description": "The coffee machine."
         }
       }
+    },
+    "save_recipe": {
+      "name": "Save recipe",
+      "description": "Creates or changes one of the six custom recipes (name, picture, amounts). With brew on, it is also poured.",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "The coffee machine."
+        },
+        "slot": {
+          "name": "Slot",
+          "description": "Custom recipe 1 to 6."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Up to 10 characters."
+        },
+        "icon": {
+          "name": "Picture",
+          "description": "Picture number of the machine's display (0 to 25, see docs)."
+        },
+        "template": {
+          "name": "Template",
+          "description": "Drink whose stored recipe is the starting point. Empty: the recipe already in the slot."
+        },
+        "brew": {
+          "name": "Brew",
+          "description": "Also pour it (save and brew)."
+        },
+        "coffee": {
+          "name": "Coffee (ml)",
+          "description": "Coffee amount."
+        },
+        "taste": {
+          "name": "Taste",
+          "description": "Coffee strength."
+        },
+        "milk": {
+          "name": "Milk (s)",
+          "description": "Milk time."
+        },
+        "water": {
+          "name": "Water (ml)",
+          "description": "Water amount."
+        },
+        "tea_temperature": {
+          "name": "Tea temperature",
+          "description": "Temperature for tea."
+        }
+      }
+    },
+    "delete_recipe": {
+      "name": "Delete recipe",
+      "description": "Empties one of the six custom recipes.",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "The coffee machine."
+        },
+        "slot": {
+          "name": "Slot",
+          "description": "Custom recipe 1 to 6."
+        }
+      }
     }
   }
 }

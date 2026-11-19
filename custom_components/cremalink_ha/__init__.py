@@ -311,6 +311,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "device": device,
         "embedded_server": embedded_server,
         "recipe_session": RecipeSession(device),
+        "catalog_changed": partial(
+            async_dispatcher_send, hass, catalog_ready_signal(entry.entry_id)
+        ),
     }
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 

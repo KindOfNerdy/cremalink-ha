@@ -366,6 +366,70 @@
           "description": "Die Kaffeemaschine."
         }
       }
+    },
+    "save_recipe": {
+      "name": "Rezept speichern",
+      "description": "Legt eines der sechs eigenen Rezepte an oder ändert es (Name, Symbol, Mengen). Mit „Zubereiten“ wird es dabei auch ausgegeben.",
+      "fields": {
+        "device_id": {
+          "name": "Maschine",
+          "description": "Die Kaffeemaschine."
+        },
+        "slot": {
+          "name": "Platz",
+          "description": "Eigenes Rezept 1 bis 6."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Bis zu 10 Zeichen."
+        },
+        "icon": {
+          "name": "Symbol",
+          "description": "Symbolnummer des Maschinen-Displays (0 bis 25, siehe Doku)."
+        },
+        "template": {
+          "name": "Vorlage",
+          "description": "Getränk, dessen gespeichertes Rezept als Ausgangspunkt dient. Leer: das Rezept, das schon im Platz liegt."
+        },
+        "brew": {
+          "name": "Zubereiten",
+          "description": "Zusätzlich ausgeben (Speichern und Ausgeben)."
+        },
+        "coffee": {
+          "name": "Kaffee (ml)",
+          "description": "Kaffeemenge."
+        },
+        "taste": {
+          "name": "Stärke",
+          "description": "Kaffeestärke."
+        },
+        "milk": {
+          "name": "Milch (s)",
+          "description": "Milchdauer."
+        },
+        "water": {
+          "name": "Wasser (ml)",
+          "description": "Wassermenge."
+        },
+        "tea_temperature": {
+          "name": "Tee-Temperatur",
+          "description": "Temperatur für Tee."
+        }
+      }
+    },
+    "delete_recipe": {
+      "name": "Rezept löschen",
+      "description": "Leert eines der sechs eigenen Rezepte.",
+      "fields": {
+        "device_id": {
+          "name": "Maschine",
+          "description": "Die Kaffeemaschine."
+        },
+        "slot": {
+          "name": "Platz",
+          "description": "Eigenes Rezept 1 bis 6."
+        }
+      }
     }
   }
 }

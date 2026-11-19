@@ -72,3 +72,82 @@ refresh_recipes:
       selector:
         device:
           integration: cremalink_ha
+
+save_recipe:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: cremalink_ha
+    slot:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 6
+          mode: box
+    name:
+      required: true
+      selector:
+        text:
+    icon:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 25
+          mode: box
+    template:
+      selector:
+        text:
+    brew:
+      default: false
+      selector:
+        boolean:
+    coffee:
+      selector:
+        number:
+          min: 0
+          max: 500
+          mode: box
+    taste:
+      selector:
+        number:
+          min: 0
+          max: 5
+          mode: box
+    milk:
+      selector:
+        number:
+          min: 0
+          max: 300
+          mode: box
+    water:
+      selector:
+        number:
+          min: 0
+          max: 500
+          mode: box
+    tea_temperature:
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+
+delete_recipe:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: cremalink_ha
+    slot:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 6
+          mode: box
+

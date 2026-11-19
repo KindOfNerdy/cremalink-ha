@@ -163,6 +163,26 @@ integration exposes:
     favorites: [coffee, latte_macchiato, flat_white]
   ```
 
+- **Custom recipe actions** (`cremalink_ha.save_recipe`, `cremalink_ha.delete_recipe`):
+  create, change or empty one of the machine's six custom recipes (`slot` 1-6).
+  `save_recipe` takes a `name` (up to 10 characters), an `icon` (the picture number
+  of the machine's display, 0-25) and optionally `template` (a drink whose stored
+  recipe is the starting point; default: the recipe already in the slot), the amounts
+  `coffee`, `taste`, `milk`, `water`, `tea_temperature`, and `brew: true` to also pour
+  it. The machine must be awake; both actions report an error if the machine does not
+  confirm.
+
+  ```yaml
+  action: cremalink_ha.save_recipe
+  data:
+    device_id: <your machine>
+    slot: 6
+    name: Hot water
+    icon: 12
+    template: hot_water
+    water: 50
+  ```
+
 - **Recipe list refresh**: the list of recipes (names, pictures, favorites) is
   read from the cloud again every 30 minutes (one request, the machine is not
   asked), so recipes created or renamed on the machine or in the app show up
