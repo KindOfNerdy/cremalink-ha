@@ -240,6 +240,7 @@
       "stat_total_other_beverages": { "name": "Sonstige Getränke gesamt" },
       "stat_total_espresso": { "name": "Espresso gesamt" },
       "stat_total_milk_drinks": { "name": "Milchgetränke gesamt" },
+      "stat_total_iced_milk_drinks": { "name": "Kalte Milchgetränke gesamt" },
       "stat_cappuccino_reverse": { "name": "Cappuccino Reverse" },
       "stat_cortado": { "name": "Cortado" },
       "stat_long_black": { "name": "Long Black" },
