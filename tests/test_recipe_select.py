@@ -86,6 +86,26 @@ class TestRecipeSelect:
         attrs = _recipe_select(entities).extra_state_attributes
         assert "favorite_beverages" not in attrs
 
+    async def test_custom_recipe_icons_exposed(self, hass):
+        _, entities = await _setup(
+            hass,
+            beverage_catalog=lambda **_: _catalog(0x01, 0xE6, 0xE7),
+            brew_entry=_names({0x01: "Espresso"}),
+            custom_recipe_names=lambda: {0xE6: "Latte XL", 0xE7: "Matcha"},
+            custom_recipe_icons=lambda: {0xE6: 2, 0xE7: 19},
+        )
+        attrs = _recipe_select(entities).extra_state_attributes
+        assert attrs["option_icons"] == {"Latte XL": 2, "Matcha": 19}
+        assert "option_icons" in select_mod.CremalinkRecipeSelect._unrecorded_attributes
+
+    async def test_no_icons_attribute_without_custom_recipes(self, hass):
+        _, entities = await _setup(
+            hass,
+            beverage_catalog=lambda **_: _catalog(0x01),
+            brew_entry=_names({0x01: "Espresso"}),
+        )
+        assert "option_icons" not in _recipe_select(entities).extra_state_attributes
+
     async def test_empty_catalogue_no_options(self, hass):
         _, entities = await _setup(hass, beverage_catalog=lambda **_: [])
         recipe = _recipe_select(entities)

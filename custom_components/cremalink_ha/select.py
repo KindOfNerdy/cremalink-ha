@@ -321,7 +321,9 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
 
     _attr_entity_category = None  # a control entity, not configuration
     # A static lookup table, not history: keep it out of the recorder.
-    _unrecorded_attributes = frozenset({"option_beverages", "favorite_beverages"})
+    _unrecorded_attributes = frozenset(
+        {"option_beverages", "favorite_beverages", "option_icons"}
+    )
 
     def __init__(self, coordinator, device, entry, session):
         super().__init__(coordinator, device, entry)
@@ -330,6 +332,7 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
         self._attr_unique_id = f"{entry.entry_id}_recipe"
         self._attr_icon = "mdi:coffee-maker-outline"
         self._options: dict[str, int] = {}  # label -> beverage_id
+        self._option_icons: dict[str, int] = {}  # custom recipe -> picture index
         self._options_refetched_at = 0.0
         self._catalog_signal = catalog_ready_signal(entry.entry_id)
 
@@ -415,6 +418,7 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
         if not beverages:
             return
         custom_names = getattr(self.device, "custom_recipe_names", dict)() or {}
+        custom_icons = getattr(self.device, "custom_recipe_icons", dict)() or {}
         # Stop shares its beverage id with a drink (action 2 = stop, e.g.
         # ECAM452 stop/hot_water both carry id 16): only start commands name
         # a drink, and the first one in map order wins.
@@ -428,6 +432,7 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
             ):
                 commands.setdefault(int(spec["beverage_id"]), command)
         options: dict[str, int] = {}
+        icons: dict[str, int] = {}
         for bev in beverages:
             # Map drinks use their command as option; Home Assistant shows
             # it in the user's language via entity.select.recipe.state.
@@ -439,7 +444,10 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
                 or _beverage_label(bev)
             )
             options.setdefault(option, bev.bev_id)
+            if bev.bev_id in custom_icons and custom_names.get(bev.bev_id):
+                icons.setdefault(option, custom_icons[bev.bev_id])
         self._options = options
+        self._option_icons = icons
         # The priming task can outrun entity attachment (hass is None
         # until added) — the next coordinator update writes state then.
         if self.hass is not None:
@@ -466,6 +474,10 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
         # machine's drink menu, so cards can group drinks the way the app
         # and the machine do (hot / cold / to go / custom ids).
         attrs = {"option_beverages": dict(self._options)} if self._options else {}
+        # ``option_icons``: custom recipe -> the picture index the machine stores
+        # with it (the app maps it to one of its drink pictures).
+        if self._option_icons:
+            attrs["option_icons"] = dict(self._option_icons)
         # The active profile's favourite drinks (beverage ids, machine order);
         # absent while unknown (older library, or not published).
         favorites = getattr(self.device, "favorite_beverages", None)
