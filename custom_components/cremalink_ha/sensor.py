@@ -4,7 +4,11 @@ import logging
 from datetime import UTC, datetime
 
 from cremalink.ecam import statistics as ecam_statistics
-from cremalink.ecam.statistics import CLOUD_COUNTER_CANDIDATES, STAT_LABELS
+from cremalink.ecam.statistics import (
+    CLOUD_COUNTER_CANDIDATES,
+    STAT_LABELS,
+    candidate_datapoint,
+)
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -119,7 +123,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         for logical, candidates in CLOUD_COUNTER_CANDIDATES.items():
             # "name#key,key" candidates count keys of a JSON datapoint.
             if map_names and not any(
-                c.split("#", 1)[0] in map_names for c in candidates
+                candidate_datapoint(c) in map_names for c in candidates
             ):
                 continue
             entities.append(CremalinkCloudCounterSensor(coordinator, entry, logical))
