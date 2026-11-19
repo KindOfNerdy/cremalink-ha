@@ -288,6 +288,10 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
         )
     if (notify := data.get("catalog_changed")) is not None:
         notify()
+    session = data.get("recipe_session")
+    if session is not None and session.selected_beverage == 229 + slot:
+        # The stored values changed: reload them, the staged changes are now saved.
+        session.select(229 + slot)
     coordinator.async_update_listeners()
 
 
