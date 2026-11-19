@@ -439,6 +439,24 @@
           "description": "Tea temperature level."
         }
       }
+    },
+    "set_favorites": {
+      "name": "Set favourites",
+      "description": "Writes the favourite drinks of a profile: the complete list in favourite order (at most 12). The machine replaces its current list. Drinks can be given by name, command, custom recipe name or beverage id.",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "The coffee machine."
+        },
+        "favorites": {
+          "name": "Favourites",
+          "description": "The drinks in favourite order, first one first."
+        },
+        "profile": {
+          "name": "Profile",
+          "description": "Profile slot 1–4. Default: the active profile."
+        }
+      }
     }
   }
 }

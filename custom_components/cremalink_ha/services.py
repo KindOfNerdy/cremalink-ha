@@ -5,6 +5,9 @@ optional amounts. Amounts left out come from the recipe stored in the
 active profile; given amounts are clamped to the machine's limits for that
 drink. Nothing is saved on the machine — it is a one-off brew, like the
 recipe picker with its sliders.
+
+``cremalink_ha.set_favorites`` writes the profile's favourite drinks: the
+complete list in favourite order, by drink name, command or id.
 """
 
 from __future__ import annotations
@@ -31,8 +34,11 @@ from .const import DOMAIN, NOT_READY_STATUSES
 _LOGGER = logging.getLogger(__name__)
 
 SERVICE_BREW = "brew"
+SERVICE_SET_FAVORITES = "set_favorites"
 ATTR_DEVICE_ID = "device_id"
 ATTR_BEVERAGE = "beverage"
+ATTR_FAVORITES = "favorites"
+ATTR_PROFILE = "profile"
 
 #: Action field -> recipe parameter id (display units, see ``PARAMS``).
 AMOUNT_FIELDS = {
@@ -50,6 +56,20 @@ BREW_SCHEMA = vol.Schema(
         **{vol.Optional(field): vol.Coerce(float) for field in AMOUNT_FIELDS},
     }
 )
+
+
+SET_FAVORITES_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_DEVICE_ID): cv.string,
+        vol.Required(ATTR_FAVORITES): vol.All(
+            cv.ensure_list, [vol.Any(cv.positive_int, cv.string)]
+        ),
+        vol.Optional(ATTR_PROFILE): cv.positive_int,
+    }
+)
+
+#: The machine keeps at most 12 favourites per profile.
+MAX_FAVORITES = 12
 
 
 def _normalise(text: str) -> str:
@@ -150,6 +170,39 @@ async def _async_brew(hass: HomeAssistant, call: ServiceCall) -> None:
     await coordinator.async_request_refresh()
 
 
+async def _async_set_favorites(hass: HomeAssistant, call: ServiceCall) -> None:
+    data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
+    device, coordinator = data["device"], data["coordinator"]
+    status = getattr(coordinator.data, "status_name", None)
+    if status in NOT_READY_STATUSES:
+        raise HomeAssistantError("The machine is not ready; turn it on first.")
+    drinks = call.data[ATTR_FAVORITES]
+    if len(drinks) > MAX_FAVORITES:
+        raise ServiceValidationError(
+            f"At most {MAX_FAVORITES} favourites are possible, got {len(drinks)}."
+        )
+    ids = [resolve_beverage(device, drink) for drink in drinks]
+    if len(set(ids)) != len(ids):
+        raise ServiceValidationError("A drink is listed twice in the favourites.")
+    profile = call.data.get(ATTR_PROFILE)
+
+    def _write() -> bool:
+        return device.set_favorite_beverages(ids, profile)
+
+    try:
+        confirmed = await hass.async_add_executor_job(_write)
+    except ValueError as err:
+        raise ServiceValidationError(str(err)) from err
+    except (OSError, RuntimeError) as err:
+        raise HomeAssistantError(f"Could not write the favourites: {err}") from err
+    if not confirmed:
+        raise HomeAssistantError(
+            "The machine did not confirm the new favourites; check them on the "
+            "machine and try again."
+        )
+    coordinator.async_update_listeners()
+
+
 def async_setup_services(hass: HomeAssistant) -> None:
     """Register the integration's actions once."""
     if hass.services.has_service(DOMAIN, SERVICE_BREW):
@@ -158,4 +211,13 @@ def async_setup_services(hass: HomeAssistant) -> None:
     async def _handle_brew(call: ServiceCall) -> None:
         await _async_brew(hass, call)
 
+    async def _handle_set_favorites(call: ServiceCall) -> None:
+        await _async_set_favorites(hass, call)
+
     hass.services.async_register(DOMAIN, SERVICE_BREW, _handle_brew, schema=BREW_SCHEMA)
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_FAVORITES,
+        _handle_set_favorites,
+        schema=SET_FAVORITES_SCHEMA,
+    )

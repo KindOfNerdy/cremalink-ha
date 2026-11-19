@@ -36,6 +36,9 @@ Entities include:
 The ``cremalink_ha.brew`` action brews one drink with optional amounts in a
 single call (for automations and scripts).
 
+The ``cremalink_ha.set_favorites`` action writes a profile's favourite drinks (the
+complete list in favourite order, by drink name, command or id).
+
 Local mode runs an embedded cremalink LAN server in-process: session
 keep-alives, command queuing, and datapoint republish handling are managed
 for you.
