@@ -138,6 +138,16 @@ REFRESH_RECIPES_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
 #: The machine keeps at most 12 favourites per profile.
 MAX_FAVORITES = 12
 
+#: Custom recipe place ``n`` (1-6) is drink ``CUSTOM_BASE + n`` (230-235).
+CUSTOM_BASE = 229
+
+#: The machine republishes names and favourites with a delay: read the list again
+#: right away and once more after this many seconds.
+REFRESH_AGAIN_SECONDS = 30
+
+#: Amounts the app does not save for cold and cold to-go drinks (fixed by the machine).
+COLD_FIXED_FIELDS = ("coffee", "milk", "water")
+
 
 def _normalise(text: str) -> str:
     return " ".join(text.replace("_", " ").split()).casefold()
@@ -202,11 +212,7 @@ def _entry_data(hass: HomeAssistant, device_id: str) -> dict:
 async def _async_brew(hass: HomeAssistant, call: ServiceCall) -> None:
     data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
     device, coordinator = data["device"], data["coordinator"]
-    status = getattr(coordinator.data, "status_name", None)
-    if status in NOT_READY_STATUSES:
-        raise HomeAssistantError("The machine is not ready; turn it on first.")
-    if getattr(coordinator.data, "is_busy", False):
-        raise HomeAssistantError("The machine is busy; wait until it is ready.")
+    _ready_or_raise(coordinator, idle=True)
     beverage_id = resolve_beverage(device, call.data[ATTR_BEVERAGE])
     amounts = {
         AMOUNT_FIELDS[field]: call.data[field]
@@ -240,9 +246,7 @@ async def _async_brew(hass: HomeAssistant, call: ServiceCall) -> None:
 async def _async_set_favorites(hass: HomeAssistant, call: ServiceCall) -> None:
     data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
     device, coordinator = data["device"], data["coordinator"]
-    status = getattr(coordinator.data, "status_name", None)
-    if status in NOT_READY_STATUSES:
-        raise HomeAssistantError("The machine is not ready; turn it on first.")
+    _ready_or_raise(coordinator)
     drinks = call.data[ATTR_FAVORITES]
     if len(drinks) > MAX_FAVORITES:
         raise ServiceValidationError(
@@ -271,11 +275,6 @@ async def _async_set_favorites(hass: HomeAssistant, call: ServiceCall) -> None:
     coordinator.async_update_listeners()
 
 
-#: The machine republishes names and favourites with a delay: read the list again
-#: right away and once more after this many seconds.
-REFRESH_AGAIN_SECONDS = 30
-
-
 def _refresh_after_write(hass: HomeAssistant, data: dict) -> None:
     """Show the change at once and read the recipe list from the cloud again."""
     if (notify := data.get("catalog_changed")) is not None:
@@ -289,6 +288,13 @@ def _refresh_after_write(hass: HomeAssistant, data: dict) -> None:
     )
 
 
+def _reload_if_selected(data: dict, beverage_id: int) -> None:
+    """The stored values of the selected drink changed: reload them (staged changes are saved)."""
+    session = data.get("recipe_session")
+    if session is not None and session.selected_beverage == beverage_id:
+        session.select(beverage_id)
+
+
 def _ready_or_raise(coordinator, *, idle: bool = False) -> None:
     status = getattr(coordinator.data, "status_name", None)
     if status in NOT_READY_STATUSES:
@@ -299,7 +305,7 @@ def _ready_or_raise(coordinator, *, idle: bool = False) -> None:
 
 def _stored_ingredients(device, slot: int) -> Ingredients:
     """The custom place's stored recipe, read live (nothing is guessed from old data)."""
-    params = device.recipe_params(229 + slot)
+    params = device.recipe_params(CUSTOM_BASE + slot)
     if params.source != "profile":
         raise HomeAssistantError("Could not read the stored recipe; try again.")
     return describe_custom_recipe(params.values)
@@ -348,15 +354,8 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
             "The machine did not confirm the recipe; check it on the machine."
         )
     _refresh_after_write(hass, data)
-    session = data.get("recipe_session")
-    if session is not None and session.selected_beverage == 229 + slot:
-        # The stored values changed: reload them, the staged changes are now saved.
-        session.select(229 + slot)
+    _reload_if_selected(data, CUSTOM_BASE + slot)
     coordinator.async_update_listeners()
-
-
-#: Amounts the app does not save for cold and cold to-go drinks (fixed by the machine).
-COLD_FIXED_FIELDS = ("coffee", "milk", "water")
 
 
 async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -366,7 +365,7 @@ async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
     _ready_or_raise(coordinator, idle=True)
     beverage_id = resolve_beverage(device, call.data[ATTR_BEVERAGE])
     label = str(call.data[ATTR_BEVERAGE])
-    if 230 <= beverage_id <= 235:
+    if CUSTOM_BASE < beverage_id <= CUSTOM_BASE + 6:
         raise ServiceValidationError(f"{label} is a custom recipe: use save_recipe.")
     if beverage_type(beverage_id) in ("cold", "to_go_cold"):
         fixed = [field for field in COLD_FIXED_FIELDS if field in call.data]
@@ -408,9 +407,7 @@ async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
         raise HomeAssistantError(
             f"The machine did not confirm {label}; check it on the machine."
         )
-    session = data.get("recipe_session")
-    if session is not None and session.selected_beverage == beverage_id:
-        session.select(beverage_id)  # reload: the staged changes are now saved
+    _reload_if_selected(data, beverage_id)
     coordinator.async_update_listeners()
     if brew:
         await coordinator.async_request_refresh()
@@ -425,14 +422,16 @@ async def _async_get_recipe(hass: HomeAssistant, call: ServiceCall) -> dict:
         current = await hass.async_add_executor_job(_stored_ingredients, device, slot)
     except (OSError, RuntimeError) as err:
         raise HomeAssistantError(f"Could not read the recipe: {err}") from err
-    name = (getattr(device, "custom_recipe_names", dict)() or {}).get(229 + slot, "")
+    name = (getattr(device, "custom_recipe_names", dict)() or {}).get(
+        CUSTOM_BASE + slot, ""
+    )
     icons = getattr(device, "custom_recipe_icons", dict)() or {}
     empty = not (current.coffee or current.milk or current.water)
     return {
         "slot": slot,
         "empty": empty,
         "name": "" if empty else name,
-        "icon": icons.get(229 + slot),
+        "icon": icons.get(CUSTOM_BASE + slot),
         "coffee": current.coffee,
         "taste": current.taste,
         "milk": current.milk / 10,
