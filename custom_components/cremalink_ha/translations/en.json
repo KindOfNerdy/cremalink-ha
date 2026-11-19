@@ -135,7 +135,60 @@
         "name": "Profile"
       },
       "recipe": {
-        "name": "Recipe"
+        "name": "Recipe",
+        "state": {
+          "americano": "Americano",
+          "brew_over_ice": "Over Ice",
+          "caffe_latte": "Caffelatte",
+          "cappuccino": "Cappuccino",
+          "cappuccino_mix": "Cappuccino Mix",
+          "cappuccino_plus": "Cappuccino+",
+          "coffee": "Coffee",
+          "coffee_pot": "Coffee pot",
+          "cold_brew": "Cold Brew",
+          "cold_brew_cappuccino": "Cold Brew Cappuccino",
+          "cold_brew_cappuccino_mug": "Cold Brew Cappuccino Mug",
+          "cold_brew_latte": "Cold Brew Latte",
+          "cold_brew_latte_mug": "Cold Brew Latte Mug",
+          "cold_brew_mug": "Cold Brew Mug",
+          "cold_brew_pot": "Cold Brew Pot",
+          "cold_brew_to_mix": "Cold Brew To Mix",
+          "cortado": "Cortado",
+          "doppio_plus": "Doppio+",
+          "double_espresso": "2 espressos",
+          "espresso": "Espresso",
+          "espresso_macchiato": "Espresso macchiato",
+          "espresso_soul": "Espresso SOUL",
+          "flat_white": "Flat White",
+          "hot_milk": "Steamed milk",
+          "hot_water": "Hot Water",
+          "iced_americano": "Cold Americano",
+          "iced_caffe_latte": "Cold CaffeLatte",
+          "iced_cappuccino": "Cold Cappuccino",
+          "iced_cappuccino_mix": "Cold Cappuccino Mix",
+          "iced_cold_milk": "Cold Milk",
+          "iced_flat_white": "Cold Flat White",
+          "iced_latte_macchiato": "Cold Latte Macchiato",
+          "latte_macchiato": "Latte macchiato",
+          "long_coffee": "Long",
+          "mug_americano": "Mug Americano",
+          "mug_caffe_latte": "Mug CaffeLatte",
+          "mug_cappuccino": "Mug Cappuccino",
+          "mug_cappuccino_mix": "Mug Cappuccino Mix",
+          "mug_flat_white": "Mug Flat White",
+          "mug_hot_milk": "Mug Hot Milk",
+          "mug_iced_americano": "Mug Cold Americano",
+          "mug_iced_caffe_latte": "Mug Cold CaffeLatte",
+          "mug_iced_cappuccino": "Mug Cold Cappuccino",
+          "mug_iced_cappuccino_mix": "Mug Cold Cappuccino Mix",
+          "mug_iced_cold_milk": "Mug Cold Milk",
+          "mug_iced_flat_white": "Mug Cold Flat White",
+          "mug_iced_latte_macchiato": "Mug Cold Latte Macchiato",
+          "mug_latte_macchiato": "Mug Latte Macchiato",
+          "mug_over_ice": "Mug Over Ice",
+          "over_ice_espresso": "Cold Over Ice Espresso",
+          "tea": "Tea function"
+        }
       },
       "bean_system": {
         "name": "Bean System"
@@ -155,11 +208,21 @@
     },
     "button": {
       "cmd_americano": { "name": "Brew Americano" },
+      "cmd_brew_over_ice": { "name": "Brew Brew Over Ice" },
       "cmd_caffe_latte": { "name": "Brew Caffe Latte" },
       "cmd_cappuccino": { "name": "Brew Cappuccino" },
       "cmd_cappuccino_mix": { "name": "Brew Cappuccino Mix" },
       "cmd_cappuccino_plus": { "name": "Brew Cappuccino Plus" },
       "cmd_coffee": { "name": "Brew Coffee" },
+      "cmd_coffee_pot": { "name": "Brew Coffee Pot" },
+      "cmd_cold_brew": { "name": "Brew Cold Brew" },
+      "cmd_cold_brew_cappuccino": { "name": "Brew Cold Brew Cappuccino" },
+      "cmd_cold_brew_cappuccino_mug": { "name": "Brew Cold Brew Cappuccino Mug" },
+      "cmd_cold_brew_latte": { "name": "Brew Cold Brew Latte" },
+      "cmd_cold_brew_latte_mug": { "name": "Brew Cold Brew Latte Mug" },
+      "cmd_cold_brew_mug": { "name": "Brew Cold Brew Mug" },
+      "cmd_cold_brew_pot": { "name": "Brew Cold Brew Pot" },
+      "cmd_cold_brew_to_mix": { "name": "Brew Cold Brew To Mix" },
       "cmd_cortado": { "name": "Brew Cortado" },
       "cmd_doppio_plus": { "name": "Brew Doppio Plus" },
       "cmd_double_espresso": { "name": "Brew Double Espresso" },
@@ -169,8 +232,32 @@
       "cmd_flat_white": { "name": "Brew Flat White" },
       "cmd_hot_milk": { "name": "Brew Hot Milk" },
       "cmd_hot_water": { "name": "Brew Hot Water" },
+      "cmd_iced_americano": { "name": "Brew Iced Americano" },
+      "cmd_iced_caffe_latte": { "name": "Brew Iced Caffe Latte" },
+      "cmd_iced_cappuccino": { "name": "Brew Iced Cappuccino" },
+      "cmd_iced_cappuccino_mix": { "name": "Brew Iced Cappuccino Mix" },
+      "cmd_iced_cold_milk": { "name": "Brew Iced Cold Milk" },
+      "cmd_iced_flat_white": { "name": "Brew Iced Flat White" },
+      "cmd_iced_latte_macchiato": { "name": "Brew Iced Latte Macchiato" },
       "cmd_latte_macchiato": { "name": "Brew Latte Macchiato" },
       "cmd_long_coffee": { "name": "Brew Long Coffee" },
+      "cmd_mug_americano": { "name": "Brew Mug Americano" },
+      "cmd_mug_caffe_latte": { "name": "Brew Mug Caffe Latte" },
+      "cmd_mug_cappuccino": { "name": "Brew Mug Cappuccino" },
+      "cmd_mug_cappuccino_mix": { "name": "Brew Mug Cappuccino Mix" },
+      "cmd_mug_flat_white": { "name": "Brew Mug Flat White" },
+      "cmd_mug_hot_milk": { "name": "Brew Mug Hot Milk" },
+      "cmd_mug_iced_americano": { "name": "Brew Mug Iced Americano" },
+      "cmd_mug_iced_caffe_latte": { "name": "Brew Mug Iced Caffe Latte" },
+      "cmd_mug_iced_cappuccino": { "name": "Brew Mug Iced Cappuccino" },
+      "cmd_mug_iced_cappuccino_mix": { "name": "Brew Mug Iced Cappuccino Mix" },
+      "cmd_mug_iced_cold_milk": { "name": "Brew Mug Iced Cold Milk" },
+      "cmd_mug_iced_flat_white": { "name": "Brew Mug Iced Flat White" },
+      "cmd_mug_iced_latte_macchiato": { "name": "Brew Mug Iced Latte Macchiato" },
+      "cmd_mug_latte_macchiato": { "name": "Brew Mug Latte Macchiato" },
+      "cmd_mug_over_ice": { "name": "Brew Mug Over Ice" },
+      "cmd_over_ice_espresso": { "name": "Brew Over Ice Espresso" },
+      "cmd_tea": { "name": "Brew Tea" },
       "cmd_stop": { "name": "Stop brewing" }
     },
     "number": {
@@ -305,6 +392,42 @@
           "latte_crema_hot_clean": "LatteCrema carafe (clean position)",
           "latte_crema_cool": "LatteCrema carafe (cool)",
           "latte_crema_cool_clean": "LatteCrema carafe (cool, clean position)"
+        }
+      }
+    }
+  },
+  "services": {
+    "brew": {
+      "name": "Brew",
+      "description": "Brews one drink. Amounts left out come from the recipe stored in the active profile; given amounts are kept within the machine's limits. Nothing is saved on the machine.",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "The coffee machine."
+        },
+        "beverage": {
+          "name": "Drink",
+          "description": "Drink name or command (e.g. cappuccino), the name of a custom recipe, or a beverage id."
+        },
+        "coffee": {
+          "name": "Coffee",
+          "description": "Coffee amount in ml."
+        },
+        "taste": {
+          "name": "Strength",
+          "description": "Coffee strength (aroma)."
+        },
+        "milk": {
+          "name": "Milk",
+          "description": "Milk in seconds."
+        },
+        "water": {
+          "name": "Water",
+          "description": "Hot water in ml."
+        },
+        "tea_temperature": {
+          "name": "Tea temperature",
+          "description": "Tea temperature level."
         }
       }
     }

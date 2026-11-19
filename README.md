@@ -123,16 +123,38 @@ integration exposes:
     the refresh token is kept; entries created through the cloud login
     keep it automatically). Without it — or if the cloud is
     unreachable — the integration falls back to reading the machine over
-    the LAN: one request per recipe on first use, then cached. The
+    the LAN: one request per recipe on first use, then cached. Cloud
+    connections load the same snapshot through their own session. The
     current values of a recipe are always read live from the machine.
+  - Custom recipes appear under the names given on the machine.
+  - The brew switch turns on right away and stays on until the machine
+    reports the drink (over the cloud that can take ~30 s); a second tap
+    in that time does not start a second drink.
 - **Stop brewing**: unchanged — available while a brew runs.
+- **Brew action** (`cremalink_ha.brew`): one call for automations and
+  scripts. Give the machine (`device_id`) and the drink (name, command
+  such as `cappuccino`, custom recipe name, or beverage id), optionally
+  with `coffee` (ml), `taste`, `milk` (s), `water` (ml) or
+  `tea_temperature`. Amounts left out come from the recipe stored in the
+  active profile; given ones are clamped to the machine's limits for
+  that drink. Nothing is saved on the machine.
+
+  ```yaml
+  action: cremalink_ha.brew
+  data:
+    device_id: <your machine>
+    beverage: cappuccino
+    coffee: 60
+    milk: 25
+  ```
 
 > **Migrating from per-drink buttons:** automations or dashboards that
 > called `button.press` on `button.brew_espresso` (etc.) need updating:
 > call `select.select_option` on `select.<machine>_recipe` with the
 > drink name, then `button.press` on `button.<machine>_brew`. Parameter
 > overrides can be staged first via `number.set_value` on the
-> `number.<machine>_…` slider entities.
+> `number.<machine>_…` slider entities — or use the single
+> `cremalink_ha.brew` action instead.
 
 > **A note on writes:** machine writes are announced through a short
 > (~300 s) session, which the integration manages for you. A write can
