@@ -187,6 +187,20 @@
           "latte_crema_cool": "LatteCrema-Karaffe (kalt)",
           "latte_crema_cool_clean": "LatteCrema-Karaffe (kalt, Reinigungsposition)"
         }
+      },
+      "cremalink_drink_phase": {
+        "name": "Vorgang",
+        "state": {
+          "grinding": "Mahlen",
+          "heating_water": "Aufheizen von Wasser",
+          "pre_infusion": "Vorbrühvorgang",
+          "preparing": "Zubereitung",
+          "dispensing": "Ausgabe",
+          "dispensing_milk": "Ausgabe von Milch",
+          "hot_water": "Heißwasser",
+          "steam": "Zubereitung von Dampf",
+          "finished": "Fertig"
+        }
       }
     }
   }
