@@ -26,7 +26,7 @@ Entities include:
 
 * **Sensors** — machine status, statistics counters
 * **Selects** — profile selection and writable machine settings (auto-off,
-  water hardness)
+  water hardness, coffee temperature)
 * **Switches** — power, beep, energy saving (machine-confirmed writes)
 * **Buttons** — brew beverages and machine actions
 * **Binary sensors** — accessory/alert states

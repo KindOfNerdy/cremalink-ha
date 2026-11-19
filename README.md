@@ -73,7 +73,7 @@ integration exposes:
   profile is also re-read on monitor cycles (param `0x03EE` — reads
   answer even in standby), so changes made on the machine's panel show
   up in the entity.
-- **Settings selects**: auto-off time and water hardness, writable via
+- **Settings selects**: auto-off time, water hardness and coffee temperature, writable via
   session-gated `0x90` commands with read-back confirmation.
 - **Bean System select** (BeanAdapt machines only): lists the configured
   bean systems by the names you assigned on the machine (read from the

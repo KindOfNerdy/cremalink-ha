@@ -4,7 +4,7 @@ Three selects per contracts/ha-entities.md:
 
 - Profile picker — occupied ``0xA4`` slots; selection sends a session-gated
   ``0xA9``; state is the last acked slot only.
-- Auto-off + water hardness — session-gated ``0x90`` writes with ``0x95``
+- Auto-off, water hardness + coffee temperature — session-gated ``0x90`` writes with ``0x95``
   read-back; state is always a machine-confirmed option.
 """
 
@@ -44,6 +44,7 @@ _LOGGER = logging.getLogger(__name__)
 SETTING_SELECTS = [
     ("auto_off", "setting_auto_off"),
     ("water_hardness", "setting_water_hardness"),
+    ("temperature", "setting_temperature"),
 ]
 
 
