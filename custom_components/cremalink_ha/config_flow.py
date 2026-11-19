@@ -38,7 +38,10 @@ from .const import (
     CONF_MANUAL_SETUP,
     CONF_PASSWORD,
     CONF_REFRESH_TOKEN,
+    CONF_CATALOG_REFRESH_MINUTES,
     CONF_TOKEN_FILE,
+    DEFAULT_CATALOG_REFRESH_MINUTES,
+    MAX_CATALOG_REFRESH_MINUTES,
     CONNECTION_CLOUD,
     CONNECTION_LOCAL,
     CONNECTION_MODE_EMBEDDED,
@@ -609,7 +612,7 @@ class CremalinkOptionsFlow(OptionsFlow):
             self.config_entry.data.get(CONF_CONNECTION_TYPE, CONNECTION_LOCAL)
             != CONNECTION_LOCAL
         ):
-            return self.async_abort(reason="local_only")
+            return await self.async_step_cloud_options(user_input)
 
         errors = {}
         if user_input is not None:
@@ -641,6 +644,10 @@ class CremalinkOptionsFlow(OptionsFlow):
                     ]
                 if token_file:
                     options[CONF_TOKEN_FILE] = token_file
+                if CONF_CATALOG_REFRESH_MINUTES in self.config_entry.options:
+                    options[CONF_CATALOG_REFRESH_MINUTES] = self.config_entry.options[
+                        CONF_CATALOG_REFRESH_MINUTES
+                    ]
                 return self.async_create_entry(
                     title="",
                     data=options,
@@ -665,6 +672,31 @@ class CremalinkOptionsFlow(OptionsFlow):
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_cloud_options(self, user_input=None):
+        """Cloud connections: how often the recipe list is read again."""
+        if user_input is not None:
+            options = dict(self.config_entry.options)
+            options[CONF_CATALOG_REFRESH_MINUTES] = user_input[
+                CONF_CATALOG_REFRESH_MINUTES
+            ]
+            return self.async_create_entry(title="", data=options)
+        current = self.config_entry.options.get(
+            CONF_CATALOG_REFRESH_MINUTES, DEFAULT_CATALOG_REFRESH_MINUTES
+        )
+        return self.async_show_form(
+            step_id="cloud_options",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_CATALOG_REFRESH_MINUTES, default=current
+                    ): vol.All(
+                        vol.Coerce(int),
+                        vol.Range(min=0, max=MAX_CATALOG_REFRESH_MINUTES),
+                    )
+                }
+            ),
         )
 
     async def _async_save_cloud_token(self, email: str, password: str) -> str | None:

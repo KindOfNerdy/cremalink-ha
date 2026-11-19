@@ -8,6 +8,9 @@ recipe picker with its sliders.
 
 ``cremalink_ha.set_favorites`` writes the profile's favourite drinks: the
 complete list in favourite order, by drink name, command or id.
+
+``cremalink_ha.refresh_recipes`` reads the recipe list (names, pictures,
+favorites) from the cloud again right now; it is also done every few minutes.
 """
 
 from __future__ import annotations
@@ -35,6 +38,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SERVICE_BREW = "brew"
 SERVICE_SET_FAVORITES = "set_favorites"
+SERVICE_REFRESH_RECIPES = "refresh_recipes"
 ATTR_DEVICE_ID = "device_id"
 ATTR_BEVERAGE = "beverage"
 ATTR_FAVORITES = "favorites"
@@ -67,6 +71,8 @@ SET_FAVORITES_SCHEMA = vol.Schema(
         vol.Optional(ATTR_PROFILE): cv.positive_int,
     }
 )
+
+REFRESH_RECIPES_SCHEMA = vol.Schema({vol.Required(ATTR_DEVICE_ID): cv.string})
 
 #: The machine keeps at most 12 favourites per profile.
 MAX_FAVORITES = 12
@@ -203,6 +209,14 @@ async def _async_set_favorites(hass: HomeAssistant, call: ServiceCall) -> None:
     coordinator.async_update_listeners()
 
 
+async def _async_refresh_recipes(hass: HomeAssistant, call: ServiceCall) -> None:
+    data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
+    refresh = data.get("refresh_catalog")
+    if refresh is None:
+        raise HomeAssistantError("The recipe list cannot be read for this machine.")
+    await refresh()
+
+
 def async_setup_services(hass: HomeAssistant) -> None:
     """Register the integration's actions once."""
     if hass.services.has_service(DOMAIN, SERVICE_BREW):
@@ -214,7 +228,16 @@ def async_setup_services(hass: HomeAssistant) -> None:
     async def _handle_set_favorites(call: ServiceCall) -> None:
         await _async_set_favorites(hass, call)
 
+    async def _handle_refresh_recipes(call: ServiceCall) -> None:
+        await _async_refresh_recipes(hass, call)
+
     hass.services.async_register(DOMAIN, SERVICE_BREW, _handle_brew, schema=BREW_SCHEMA)
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REFRESH_RECIPES,
+        _handle_refresh_recipes,
+        schema=REFRESH_RECIPES_SCHEMA,
+    )
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_FAVORITES,

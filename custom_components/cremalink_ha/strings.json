@@ -99,6 +99,16 @@
           "email": "Only used for the one-time sign-in. Without it the catalogue is read from the machine over the LAN, one request per recipe on first use.",
           "password": "Never stored — only the resulting refresh token is kept."
         }
+      },
+      "cloud_options": {
+        "title": "Recipe list",
+        "description": "How often the recipe list (names, pictures and favorites) is read again from the cloud, in minutes. Changes you make here in Home Assistant show up at once; changes made on the machine or in the app after this time. 0 turns it off.",
+        "data": {
+          "catalog_refresh_minutes": "Reload every (minutes)"
+        },
+        "data_description": {
+          "catalog_refresh_minutes": "0 to 240. One cloud request, the machine is not asked."
+        }
       }
     },
     "error": {
@@ -470,6 +480,16 @@
         "profile": {
           "name": "Profile",
           "description": "Profile slot 1–4. Default: the active profile."
+        }
+      }
+    },
+    "refresh_recipes": {
+      "name": "Refresh recipes",
+      "description": "Reads the recipe list (names, pictures, favorites) from the cloud again right now. It is also done every few minutes (see the integration's options). The machine is not asked.",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "The coffee machine."
         }
       }
     }

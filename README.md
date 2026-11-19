@@ -163,6 +163,13 @@ integration exposes:
     favorites: [coffee, latte_macchiato, flat_white]
   ```
 
+- **Recipe list refresh**: the list of recipes (names, pictures, favorites) is
+  read from the cloud again every 30 minutes (one request, the machine is not
+  asked), so recipes created or renamed on the machine or in the app show up
+  without a restart. Change the interval (0 to 240 minutes, 0 = off) in the
+  integration's *Configure* dialog, or reload right now with the
+  `cremalink_ha.refresh_recipes` action (`device_id`).
+
 > **Migrating from per-drink buttons:** automations or dashboards that
 > called `button.press` on `button.brew_espresso` (etc.) need updating:
 > call `select.select_option` on `select.<machine>_recipe` with the

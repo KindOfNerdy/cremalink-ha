@@ -301,13 +301,22 @@ class TestAdvertisedIPOptionsFlow:
 
         assert result["data"][CONF_TOKEN_FILE] == "/config/cremalink_tokens/DSN1.json"
 
-    async def test_cloud_options_are_not_supported(self, hass):
+    async def test_cloud_options_offer_the_recipe_refresh_interval(self, hass):
         flow = self._make_options_flow(hass, connection_type=CONNECTION_CLOUD)
 
         result = await flow.async_step_init()
 
-        assert result["type"] == "abort"
-        assert result["reason"] == "local_only"
+        assert result["type"] == "form"
+        assert result["step_id"] == "cloud_options"
+
+    async def test_cloud_options_save_the_interval(self, hass):
+        flow = self._make_options_flow(hass, connection_type=CONNECTION_CLOUD)
+
+        result = await flow.async_step_init()
+        result = await flow.async_step_cloud_options({"catalog_refresh_minutes": 60})
+
+        assert result["type"] == "create_entry"
+        assert result["data"]["catalog_refresh_minutes"] == 60
 
 
 class TestModelDetectionFallback:

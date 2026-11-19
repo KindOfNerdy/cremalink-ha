@@ -64,3 +64,11 @@ set_favorites:
           min: 1
           max: 4
           mode: box
+
+refresh_recipes:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: cremalink_ha

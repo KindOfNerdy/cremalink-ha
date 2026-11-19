@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import time
+from datetime import timedelta
 from functools import partial
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers import translation
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from cremalink import (
@@ -28,6 +30,7 @@ from .const import (
     CONF_ADDON_URL,
     CONF_ADVERTISED_IP,
     CONF_CONNECTION_MODE,
+    CONF_CATALOG_REFRESH_MINUTES,
     CONF_CONNECTION_TYPE,
     CONF_DEVICE_IP,
     CONF_DEVICE_MAP,
@@ -38,6 +41,7 @@ from .const import (
     CONNECTION_LOCAL,
     CONNECTION_MODE_EMBEDDED,
     CUSTOM_MAP_DIR,
+    DEFAULT_CATALOG_REFRESH_MINUTES,
     DEFAULT_MONITOR_POLL_INTERVAL,
     DEFAULT_NUDGER_POLL_INTERVAL,
     DEVICE_NAME,
@@ -328,8 +332,86 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _async_preload_catalog(hass, entry, device, dsn),
         f"{DOMAIN}_{entry.entry_id}_cloud_catalog",
     )
+    entry.async_on_unload(_async_schedule_catalog_refresh(hass, entry, device, dsn))
     async_setup_services(hass)
     return True
+
+
+def _seed_catalog_from_cloud(entry, device, dsn, cloud, token_file) -> tuple[int, int]:
+    """One cloud request, then seed the catalogue; ``(properties, descriptors)``."""
+    if cloud:
+        # Cloud devices already hold a session: reuse it instead of a
+        # second client rotating the same refresh token.
+        properties = _cloud_snapshot(device)
+    else:
+        client = Client(str(token_file), logger=_LOGGER)
+        properties = client.fetch_properties(dsn)
+    seeded = device.seed_catalog_from_properties(properties)
+    return len(properties), seeded
+
+
+def _catalog_fingerprint(device) -> tuple:
+    """What the recipe list shows and a change in it must refresh: names, pictures, favorites."""
+    names = getattr(device, "custom_recipe_names", None)
+    icons = getattr(device, "custom_recipe_icons", None)
+    favorites = getattr(device, "favorite_beverages", None)
+    return (
+        tuple(sorted((names() or {}).items())) if callable(names) else (),
+        tuple(sorted((icons() or {}).items())) if callable(icons) else (),
+        tuple(
+            tuple(favorites(slot) or ()) if callable(favorites) else ()
+            for slot in range(1, 5)
+        ),
+    )
+
+
+async def async_refresh_catalog(
+    hass: HomeAssistant, entry: ConfigEntry, device, dsn: str
+) -> bool:
+    """Read the recipe list from the cloud again; tell the entities when it changed.
+
+    One cloud request, the machine is not asked. Returns ``True`` when names,
+    pictures or favorites differ from before.
+    """
+    cloud = entry.data.get(CONF_CONNECTION_TYPE) == CONNECTION_CLOUD
+    token_file = entry.options.get(CONF_TOKEN_FILE) or entry.data.get(CONF_TOKEN_FILE)
+    if not cloud and not token_file:
+        return False
+    before = _catalog_fingerprint(device)
+    try:
+        await hass.async_add_executor_job(
+            _seed_catalog_from_cloud, entry, device, dsn, cloud, token_file
+        )
+    except Exception as err:  # noqa: BLE001 - a failed refresh keeps what we have
+        _LOGGER.debug("Recipe list refresh failed for %s: %r", dsn, err)
+        return False
+    changed = _catalog_fingerprint(device) != before
+    if changed:
+        _LOGGER.debug("Recipe list changed, telling the entities")
+        async_dispatcher_send(hass, catalog_ready_signal(entry.entry_id))
+    return changed
+
+
+def _async_schedule_catalog_refresh(
+    hass: HomeAssistant, entry: ConfigEntry, device, dsn: str
+):
+    """Read the recipe list again every N minutes (option, default 30; 0 = off)."""
+    minutes = entry.options.get(
+        CONF_CATALOG_REFRESH_MINUTES, DEFAULT_CATALOG_REFRESH_MINUTES
+    )
+    refresh = partial(async_refresh_catalog, hass, entry, device, dsn)
+    hass.data[DOMAIN][entry.entry_id]["refresh_catalog"] = refresh
+    if not minutes:
+        return lambda: None
+
+    def _tick(_now) -> None:
+        entry.async_create_background_task(
+            hass, refresh(), f"{DOMAIN}_{entry.entry_id}_catalog_refresh"
+        )
+
+    return async_track_time_interval(
+        hass, _tick, timedelta(minutes=int(minutes)), cancel_on_shutdown=True
+    )
 
 
 def _cloud_snapshot(device) -> dict:
@@ -365,15 +447,7 @@ async def _async_preload_catalog(
         return
 
     def _fetch_and_seed() -> tuple[int, int]:
-        if cloud:
-            # Cloud devices already hold a session: reuse it instead of a
-            # second client rotating the same refresh token.
-            properties = _cloud_snapshot(device)
-        else:
-            client = Client(str(token_file), logger=_LOGGER)
-            properties = client.fetch_properties(dsn)
-        seeded = device.seed_catalog_from_properties(properties)
-        return len(properties), seeded
+        return _seed_catalog_from_cloud(entry, device, dsn, cloud, token_file)
 
     try:
         started = time.monotonic()

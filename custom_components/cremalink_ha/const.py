@@ -36,6 +36,10 @@ DEFAULT_NUDGER_POLL_INTERVAL = 1
 CONF_CONNECTION_MODE = "connection_mode"
 CONNECTION_MODE_EMBEDDED = "embedded"
 CONF_ADVERTISED_IP = "advertised_ip"
+#: How often (minutes) the recipe list is read again from the cloud; 0 = never.
+CONF_CATALOG_REFRESH_MINUTES = "catalog_refresh_minutes"
+DEFAULT_CATALOG_REFRESH_MINUTES = 30
+MAX_CATALOG_REFRESH_MINUTES = 240
 
 
 def catalog_ready_signal(entry_id: str) -> str:

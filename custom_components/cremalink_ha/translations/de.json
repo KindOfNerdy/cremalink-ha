@@ -356,6 +356,16 @@
           "description": "Profil-Slot 1–4. Standard: das aktive Profil."
         }
       }
+    },
+    "refresh_recipes": {
+      "name": "Rezepte neu laden",
+      "description": "Liest die Rezeptliste (Namen, Symbole, Favoriten) jetzt neu aus der Cloud. Das passiert auch alle paar Minuten (siehe Optionen der Integration). Die Maschine wird dabei nicht angesprochen.",
+      "fields": {
+        "device_id": {
+          "name": "Maschine",
+          "description": "Die Kaffeemaschine."
+        }
+      }
     }
   }
 }
