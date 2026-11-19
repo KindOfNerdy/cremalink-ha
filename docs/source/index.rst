@@ -26,7 +26,7 @@ Entities include:
 
 * **Sensors** — machine status, statistics counters
 * **Selects** — profile selection, recipe picker and writable machine
-  settings (auto-off, water hardness)
+  settings (auto-off, water hardness, coffee temperature)
 * **Numbers** — per-recipe amounts for the next brew (coffee, milk, water…)
 * **Switches** — power, brew/stop, beep, energy saving (machine-confirmed
   writes)

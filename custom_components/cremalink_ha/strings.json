@@ -204,6 +204,15 @@
           "level_3": "Level 3",
           "level_4": "Level 4"
         }
+      },
+      "setting_temperature": {
+        "name": "Coffee Temperature",
+        "state": {
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High",
+          "max": "Max"
+        }
       }
     },
     "button": {
