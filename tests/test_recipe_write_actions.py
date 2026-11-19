@@ -217,3 +217,32 @@ class TestDeleteRecipe:
                 {"device_id": device_id, "slot": 2},
                 blocking=True,
             )
+
+
+class TestRefreshAfterWrite:
+    async def test_the_recipe_list_is_read_again_now_and_later(self, hass, monkeypatch):
+        from custom_components.cremalink_ha import services as services_mod
+
+        later = []
+        monkeypatch.setattr(
+            services_mod,
+            "async_call_later",
+            lambda _hass, delay, action: later.append((delay, action)),
+        )
+        device_id, _, _ = await _setup(hass)
+        entry_data = next(iter(hass.data[DOMAIN].values()))
+        reads = []
+
+        async def _refresh():
+            reads.append(1)
+
+        entry_data["refresh_catalog"] = _refresh
+
+        await _save(hass, device_id, water=50)
+        await hass.async_block_till_done()
+        assert len(reads) == 1
+        assert [delay for delay, _ in later] == [30]
+
+        later[0][1](None)
+        await hass.async_block_till_done()
+        assert len(reads) == 2

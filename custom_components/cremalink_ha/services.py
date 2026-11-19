@@ -42,6 +42,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.event import async_call_later
 
 from .const import DOMAIN, NOT_READY_STATUSES
 
@@ -255,7 +256,26 @@ async def _async_set_favorites(hass: HomeAssistant, call: ServiceCall) -> None:
             "The machine did not confirm the new favourites; check them on the "
             "machine and try again."
         )
+    _refresh_after_write(hass, data)
     coordinator.async_update_listeners()
+
+
+#: The machine republishes names and favourites with a delay: read the list again
+#: right away and once more after this many seconds.
+REFRESH_AGAIN_SECONDS = 30
+
+
+def _refresh_after_write(hass: HomeAssistant, data: dict) -> None:
+    """Show the change at once and read the recipe list from the cloud again."""
+    if (notify := data.get("catalog_changed")) is not None:
+        notify()
+    refresh = data.get("refresh_catalog")
+    if refresh is None:
+        return
+    hass.async_create_task(refresh())
+    async_call_later(
+        hass, REFRESH_AGAIN_SECONDS, lambda _now: hass.async_create_task(refresh())
+    )
 
 
 def _ready_or_raise(coordinator, *, idle: bool = False) -> None:
@@ -315,8 +335,7 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
         raise HomeAssistantError(
             "The machine did not confirm the recipe; check it on the machine."
         )
-    if (notify := data.get("catalog_changed")) is not None:
-        notify()
+    _refresh_after_write(hass, data)
     session = data.get("recipe_session")
     if session is not None and session.selected_beverage == 229 + slot:
         # The stored values changed: reload them, the staged changes are now saved.
@@ -365,8 +384,7 @@ async def _async_delete_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
         raise HomeAssistantError(
             "The machine did not confirm the deletion; check it on the machine."
         )
-    if (notify := data.get("catalog_changed")) is not None:
-        notify()
+    _refresh_after_write(hass, data)
     coordinator.async_update_listeners()
 
 
