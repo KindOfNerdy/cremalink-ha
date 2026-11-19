@@ -41,8 +41,7 @@
         "state": {
           "low": "Niedrig",
           "medium": "Mittel",
-          "high": "Hoch",
-          "max": "Max."
+          "high": "Hoch"
         }
       }
     },

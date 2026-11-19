@@ -124,7 +124,7 @@ class TestCoffeeTemperature:
     async def test_options_and_current(self, hass):
         _, entities = await _setup(hass, get_settings=lambda **_: {"temperature": 1})
         sel = _by_uid(entities, "entry1_setting_temperature")
-        assert sel.options == ["low", "medium", "high", "max"]
+        assert sel.options == ["low", "medium", "high"]
         assert sel.current_option == "medium"
 
     async def test_select_writes_index(self, hass):
