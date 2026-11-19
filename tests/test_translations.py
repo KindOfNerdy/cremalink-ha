@@ -186,6 +186,20 @@ class TestEnglishNamesAreUnchanged:
         assert buttons["cmd_stop"]["name"] == "Stop brewing"
 
 
+class TestStatusStates:
+    def test_every_status_of_every_packaged_map_is_translated(self):
+        statuses = set()
+        for path in Path(devices_pkg.__file__).parent.glob("*.json"):
+            profile = json.loads(path.read_text(encoding="utf-8")).get(
+                "monitor_profile", {}
+            )
+            statuses |= set(profile.get("enums", {}).get("status", {}).values())
+        assert statuses
+        for table in (STRINGS, EN, DE):
+            states = _entity_section(table)["sensor"]["cremalink_status_name"]["state"]
+            assert statuses <= set(states), sorted(statuses - set(states))
+
+
 class TestCommands:
     def test_every_command_of_every_packaged_map_is_translated(self):
         missing = _map_commands() - TRANSLATED_COMMANDS
