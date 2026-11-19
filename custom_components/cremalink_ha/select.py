@@ -320,6 +320,8 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
     """
 
     _attr_entity_category = None  # a control entity, not configuration
+    # A static lookup table, not history: keep it out of the recorder.
+    _unrecorded_attributes = frozenset({"option_beverages", "favorite_beverages"})
 
     def __init__(self, coordinator, device, entry, session):
         super().__init__(coordinator, device, entry)
@@ -460,7 +462,16 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
 
     @property
     def extra_state_attributes(self):
-        attrs = {}
+        # ``option_beverages``: option -> beverage id, in the order of the
+        # machine's drink menu, so cards can group drinks the way the app
+        # and the machine do (hot / cold / to go / custom ids).
+        attrs = {"option_beverages": dict(self._options)} if self._options else {}
+        # The active profile's favourite drinks (beverage ids, machine order);
+        # absent while unknown (older library, or not published).
+        favorites = getattr(self.device, "favorite_beverages", None)
+        favorites = favorites() if callable(favorites) else None
+        if favorites is not None:
+            attrs["favorite_beverages"] = list(favorites)
         if self.session.selected_beverage:
             attrs["selected_beverage"] = self.session.selected_beverage
         params = self.session.params
