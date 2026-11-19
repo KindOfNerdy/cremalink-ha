@@ -298,7 +298,8 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
     data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
     device, coordinator = data["device"], data["coordinator"]
     brew = call.data[ATTR_BREW]
-    _ready_or_raise(coordinator, idle=brew)
+    # Like the app: recipes are saved only while the machine is ready and idle.
+    _ready_or_raise(coordinator, idle=True)
     slot = call.data[ATTR_SLOT]
     name, icon = call.data[ATTR_NAME], call.data[ATTR_ICON]
 
@@ -372,7 +373,7 @@ async def _async_get_recipe(hass: HomeAssistant, call: ServiceCall) -> dict:
 async def _async_delete_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
     data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
     device, coordinator = data["device"], data["coordinator"]
-    _ready_or_raise(coordinator)
+    _ready_or_raise(coordinator, idle=True)
     slot = call.data[ATTR_SLOT]
     try:
         confirmed = await hass.async_add_executor_job(device.delete_custom_recipe, slot)

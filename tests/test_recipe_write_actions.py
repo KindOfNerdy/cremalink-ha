@@ -118,11 +118,12 @@ class TestSaveRecipe:
             await _save(hass, device_id, water=50)
         assert saved == []
 
-    async def test_a_busy_machine_is_refused_when_brewing(self, hass):
+    @pytest.mark.parametrize("brew", [True, False])
+    async def test_a_busy_machine_is_refused(self, hass, brew):
         device_id, saved, _ = await _setup(hass, busy=True)
 
         with pytest.raises(HomeAssistantError, match="busy"):
-            await _save(hass, device_id, water=50, brew=True)
+            await _save(hass, device_id, water=50, brew=brew)
         assert saved == []
 
     async def test_unconfirmed_write_is_an_error(self, hass):
@@ -198,6 +199,18 @@ class TestGetRecipe:
 
 
 class TestDeleteRecipe:
+    async def test_a_busy_machine_is_refused(self, hass):
+        device_id, _, deleted = await _setup(hass, busy=True)
+
+        with pytest.raises(HomeAssistantError, match="busy"):
+            await hass.services.async_call(
+                DOMAIN,
+                "delete_recipe",
+                {"device_id": device_id, "slot": 6},
+                blocking=True,
+            )
+        assert deleted == []
+
     async def test_deletes_the_slot(self, hass):
         device_id, _, deleted = await _setup(hass)
 
