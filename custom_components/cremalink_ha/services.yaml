@@ -98,18 +98,11 @@ save_recipe:
           min: 0
           max: 25
           mode: box
-    template:
-      selector:
-        text:
-    brew:
-      default: false
-      selector:
-        boolean:
     coffee:
       selector:
         number:
           min: 0
-          max: 500
+          max: 180
           mode: box
     taste:
       selector:
@@ -121,19 +114,41 @@ save_recipe:
       selector:
         number:
           min: 0
-          max: 300
+          max: 108
           mode: box
+    froth:
+      selector:
+        number:
+          min: 0
+          max: 2
+          mode: box
+    milk_first:
+      selector:
+        boolean:
     water:
       selector:
         number:
           min: 0
-          max: 500
+          max: 300
           mode: box
-    tea_temperature:
+    brew:
+      default: false
+      selector:
+        boolean:
+
+get_recipe:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: cremalink_ha
+    slot:
+      required: true
       selector:
         number:
-          min: 0
-          max: 100
+          min: 1
+          max: 6
           mode: box
 
 delete_recipe:

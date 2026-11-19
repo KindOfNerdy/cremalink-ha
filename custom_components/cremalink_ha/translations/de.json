@@ -369,7 +369,7 @@
     },
     "save_recipe": {
       "name": "Rezept speichern",
-      "description": "Legt eines der sechs eigenen Rezepte an oder ändert es (Name, Symbol, Mengen). Mit „Zubereiten“ wird es dabei auch ausgegeben.",
+      "description": "Legt eines der sechs eigenen Rezepte an oder ändert es, wie die Coffee-Link-App: aus Zutaten (Kaffee, Milch, Wasser), Name und Symbol. Nicht angegebene Zutaten bleiben, wie sie sind; 0 schaltet eine Zutat aus.",
       "fields": {
         "device_id": {
           "name": "Maschine",
@@ -385,41 +385,55 @@
         },
         "icon": {
           "name": "Symbol",
-          "description": "Symbolnummer des Maschinen-Displays (0 bis 25, siehe Doku)."
+          "description": "Symbolnummer des Maschinen-Displays (0 bis 19 wie in der App, 20 bis 25 zusätzlich)."
         },
-        "template": {
-          "name": "Vorlage",
-          "description": "Getränk, dessen gespeichertes Rezept als Ausgangspunkt dient. Leer: das Rezept, das schon im Platz liegt."
+        "coffee": {
+          "name": "Kaffee (ml)",
+          "description": "20 bis 180, 0 = aus."
+        },
+        "taste": {
+          "name": "Stärke",
+          "description": "0 bis 5, nur mit Kaffee."
+        },
+        "milk": {
+          "name": "Milch (s)",
+          "description": "5 bis 108 Sekunden, 0 = aus."
+        },
+        "froth": {
+          "name": "Schaum",
+          "description": "0 bis 2, nur mit Milch."
+        },
+        "milk_first": {
+          "name": "Milch zuerst",
+          "description": "Nur mit Milch."
+        },
+        "water": {
+          "name": "Wasser (ml)",
+          "description": "50 bis 300, 0 = aus."
         },
         "brew": {
           "name": "Zubereiten",
           "description": "Zusätzlich ausgeben (Speichern und Ausgeben)."
-        },
-        "coffee": {
-          "name": "Kaffee (ml)",
-          "description": "Kaffeemenge."
-        },
-        "taste": {
-          "name": "Stärke",
-          "description": "Kaffeestärke."
-        },
-        "milk": {
-          "name": "Milch (s)",
-          "description": "Milchdauer."
-        },
-        "water": {
-          "name": "Wasser (ml)",
-          "description": "Wassermenge."
-        },
-        "tea_temperature": {
-          "name": "Tee-Temperatur",
-          "description": "Temperatur für Tee."
         }
       }
     },
     "delete_recipe": {
       "name": "Rezept löschen",
       "description": "Leert eines der sechs eigenen Rezepte.",
+      "fields": {
+        "device_id": {
+          "name": "Maschine",
+          "description": "Die Kaffeemaschine."
+        },
+        "slot": {
+          "name": "Platz",
+          "description": "Eigenes Rezept 1 bis 6."
+        }
+      }
+    },
+    "get_recipe": {
+      "name": "Rezept lesen",
+      "description": "Liefert, was ein eigener Platz gerade enthält (Zutaten in Anzeigeeinheiten).",
       "fields": {
         "device_id": {
           "name": "Maschine",

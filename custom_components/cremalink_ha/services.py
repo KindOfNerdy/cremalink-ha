@@ -10,8 +10,9 @@ recipe picker with its sliders.
 complete list in favourite order, by drink name, command or id.
 
 ``cremalink_ha.save_recipe`` creates or changes one of the six custom recipes
-(name, picture, amounts; optionally pours it), ``cremalink_ha.delete_recipe``
-empties a slot.
+the way the Coffee Link app does: from ingredients (coffee, milk, water, strength,
+froth, milk first), name and picture, optionally pouring it. ``cremalink_ha.get_recipe``
+returns what a place holds now, ``cremalink_ha.delete_recipe`` empties it.
 
 ``cremalink_ha.refresh_recipes`` reads the recipe list (names, pictures,
 favorites) from the cloud again right now; it is also done every few minutes.
@@ -20,6 +21,7 @@ favorites) from the cloud again right now; it is also done every few minutes.
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -30,8 +32,13 @@ else:
         import probatio as vol
     except ImportError:  # older HA ships only voluptuous
         import voluptuous as vol
+from cremalink.ecam.custom_recipe import (
+    Ingredients,
+    compose_custom_recipe,
+    describe_custom_recipe,
+)
 from cremalink.ecam.params import PARAMS, to_raw
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
@@ -45,6 +52,7 @@ SERVICE_SET_FAVORITES = "set_favorites"
 SERVICE_REFRESH_RECIPES = "refresh_recipes"
 SERVICE_SAVE_RECIPE = "save_recipe"
 SERVICE_DELETE_RECIPE = "delete_recipe"
+SERVICE_GET_RECIPE = "get_recipe"
 ATTR_DEVICE_ID = "device_id"
 ATTR_BEVERAGE = "beverage"
 ATTR_FAVORITES = "favorites"
@@ -52,7 +60,6 @@ ATTR_PROFILE = "profile"
 ATTR_SLOT = "slot"
 ATTR_NAME = "name"
 ATTR_ICON = "icon"
-ATTR_TEMPLATE = "template"
 ATTR_BREW = "brew"
 
 #: Action field -> recipe parameter id (display units, see ``PARAMS``).
@@ -89,9 +96,21 @@ SAVE_RECIPE_SCHEMA = vol.Schema(
         vol.Required(ATTR_SLOT): vol.All(vol.Coerce(int), vol.Range(min=1, max=6)),
         vol.Required(ATTR_NAME): vol.All(cv.string, vol.Length(min=1, max=10)),
         vol.Required(ATTR_ICON): vol.All(vol.Coerce(int), vol.Range(min=0, max=25)),
-        vol.Optional(ATTR_TEMPLATE): vol.Any(cv.positive_int, cv.string),
         vol.Optional(ATTR_BREW, default=False): cv.boolean,
-        **{vol.Optional(field): vol.Coerce(float) for field in AMOUNT_FIELDS},
+        # Ingredients like in the Coffee Link app; 0 switches one off, left out keeps it.
+        vol.Optional("coffee"): vol.All(vol.Coerce(int), vol.Range(min=0, max=180)),
+        vol.Optional("taste"): vol.All(vol.Coerce(int), vol.Range(min=0, max=5)),
+        vol.Optional("milk"): vol.All(vol.Coerce(float), vol.Range(min=0, max=108)),
+        vol.Optional("froth"): vol.All(vol.Coerce(int), vol.Range(min=0, max=2)),
+        vol.Optional("milk_first"): cv.boolean,
+        vol.Optional("water"): vol.All(vol.Coerce(int), vol.Range(min=0, max=300)),
+    }
+)
+
+GET_RECIPE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_DEVICE_ID): cv.string,
+        vol.Required(ATTR_SLOT): vol.All(vol.Coerce(int), vol.Range(min=1, max=6)),
     }
 )
 
@@ -247,6 +266,14 @@ def _ready_or_raise(coordinator, *, idle: bool = False) -> None:
         raise HomeAssistantError("The machine is busy; wait until it is ready.")
 
 
+def _stored_ingredients(device, slot: int) -> Ingredients:
+    """The custom place's stored recipe, read live (nothing is guessed from old data)."""
+    params = device.recipe_params(229 + slot)
+    if params.source != "profile":
+        raise HomeAssistantError("Could not read the stored recipe; try again.")
+    return describe_custom_recipe(params.values)
+
+
 async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
     data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
     device, coordinator = data["device"], data["coordinator"]
@@ -254,24 +281,26 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
     _ready_or_raise(coordinator, idle=brew)
     slot = call.data[ATTR_SLOT]
     name, icon = call.data[ATTR_NAME], call.data[ATTR_ICON]
-    if ATTR_TEMPLATE in call.data:
-        template_id = resolve_beverage(device, call.data[ATTR_TEMPLATE])
-    else:
-        template_id = 229 + slot  # change the recipe that is already in the slot
-    amounts = {
-        AMOUNT_FIELDS[field]: call.data[field]
-        for field in AMOUNT_FIELDS
-        if field in call.data
-    }
 
     def _save() -> bool:
-        params = device.recipe_params(template_id)
-        if params.source != "profile":
-            raise HomeAssistantError(
-                "Could not read the recipe to start from; try again."
-            )
-        values = dict(params.values)
-        values.update(build_overrides(params, amounts, name))
+        current = _stored_ingredients(device, slot)
+        given = call.data
+        ingredients = replace(
+            current,
+            **{
+                key: value
+                for key, value in {
+                    "coffee": given.get("coffee"),
+                    "taste": given.get("taste"),
+                    "milk": None if "milk" not in given else to_raw(9, given["milk"]),
+                    "froth": given.get("froth"),
+                    "milk_first": given.get("milk_first"),
+                    "water": given.get("water"),
+                }.items()
+                if value is not None
+            },
+        )
+        values = compose_custom_recipe(ingredients)
         return device.save_custom_recipe(slot, name, icon, values, brew=brew)
 
     try:
@@ -293,6 +322,32 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
         # The stored values changed: reload them, the staged changes are now saved.
         session.select(229 + slot)
     coordinator.async_update_listeners()
+
+
+async def _async_get_recipe(hass: HomeAssistant, call: ServiceCall) -> dict:
+    """The stored ingredients of a custom place (for the card's form)."""
+    data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
+    device = data["device"]
+    slot = call.data[ATTR_SLOT]
+    try:
+        current = await hass.async_add_executor_job(_stored_ingredients, device, slot)
+    except (OSError, RuntimeError) as err:
+        raise HomeAssistantError(f"Could not read the recipe: {err}") from err
+    name = (getattr(device, "custom_recipe_names", dict)() or {}).get(229 + slot, "")
+    icons = getattr(device, "custom_recipe_icons", dict)() or {}
+    empty = not (current.coffee or current.milk or current.water)
+    return {
+        "slot": slot,
+        "empty": empty,
+        "name": "" if empty else name,
+        "icon": icons.get(229 + slot),
+        "coffee": current.coffee,
+        "taste": current.taste,
+        "milk": current.milk / 10,
+        "froth": current.froth,
+        "milk_first": current.milk_first,
+        "water": current.water,
+    }
 
 
 async def _async_delete_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -337,6 +392,9 @@ def async_setup_services(hass: HomeAssistant) -> None:
     async def _handle_save_recipe(call: ServiceCall) -> None:
         await _async_save_recipe(hass, call)
 
+    async def _handle_get_recipe(call: ServiceCall) -> dict:
+        return await _async_get_recipe(hass, call)
+
     async def _handle_delete_recipe(call: ServiceCall) -> None:
         await _async_delete_recipe(hass, call)
 
@@ -346,6 +404,13 @@ def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, SERVICE_BREW, _handle_brew, schema=BREW_SCHEMA)
     hass.services.async_register(
         DOMAIN, SERVICE_SAVE_RECIPE, _handle_save_recipe, schema=SAVE_RECIPE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_RECIPE,
+        _handle_get_recipe,
+        schema=GET_RECIPE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
         DOMAIN,

@@ -495,7 +495,7 @@
     },
     "save_recipe": {
       "name": "Save recipe",
-      "description": "Creates or changes one of the six custom recipes (name, picture, amounts). With brew on, it is also poured.",
+      "description": "Creates or changes one of the six custom recipes the way the Coffee Link app does: from ingredients (coffee, milk, water), name and picture. Ingredients left out stay as they are; 0 switches one off.",
       "fields": {
         "device_id": {
           "name": "Machine",
@@ -511,41 +511,55 @@
         },
         "icon": {
           "name": "Picture",
-          "description": "Picture number of the machine's display (0 to 25, see docs)."
+          "description": "Picture number of the machine's display (0 to 19 as in the app, 20 to 25 in addition)."
         },
-        "template": {
-          "name": "Template",
-          "description": "Drink whose stored recipe is the starting point. Empty: the recipe already in the slot."
+        "coffee": {
+          "name": "Coffee (ml)",
+          "description": "20 to 180, 0 = off."
+        },
+        "taste": {
+          "name": "Strength",
+          "description": "0 to 5, with coffee only."
+        },
+        "milk": {
+          "name": "Milk (s)",
+          "description": "5 to 108 seconds, 0 = off."
+        },
+        "froth": {
+          "name": "Froth",
+          "description": "0 to 2, with milk only."
+        },
+        "milk_first": {
+          "name": "Milk first",
+          "description": "With milk only."
+        },
+        "water": {
+          "name": "Water (ml)",
+          "description": "50 to 300, 0 = off."
         },
         "brew": {
           "name": "Brew",
           "description": "Also pour it (save and brew)."
-        },
-        "coffee": {
-          "name": "Coffee (ml)",
-          "description": "Coffee amount."
-        },
-        "taste": {
-          "name": "Taste",
-          "description": "Coffee strength."
-        },
-        "milk": {
-          "name": "Milk (s)",
-          "description": "Milk time."
-        },
-        "water": {
-          "name": "Water (ml)",
-          "description": "Water amount."
-        },
-        "tea_temperature": {
-          "name": "Tea temperature",
-          "description": "Temperature for tea."
         }
       }
     },
     "delete_recipe": {
       "name": "Delete recipe",
       "description": "Empties one of the six custom recipes.",
+      "fields": {
+        "device_id": {
+          "name": "Machine",
+          "description": "The coffee machine."
+        },
+        "slot": {
+          "name": "Slot",
+          "description": "Custom recipe 1 to 6."
+        }
+      }
+    },
+    "get_recipe": {
+      "name": "Read recipe",
+      "description": "Returns what a custom place holds now (ingredients in display units).",
       "fields": {
         "device_id": {
           "name": "Machine",

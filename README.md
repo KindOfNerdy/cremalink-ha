@@ -163,14 +163,16 @@ integration exposes:
     favorites: [coffee, latte_macchiato, flat_white]
   ```
 
-- **Custom recipe actions** (`cremalink_ha.save_recipe`, `cremalink_ha.delete_recipe`):
-  create, change or empty one of the machine's six custom recipes (`slot` 1-6).
-  `save_recipe` takes a `name` (up to 10 characters), an `icon` (the picture number
-  of the machine's display, 0-25) and optionally `template` (a drink whose stored
-  recipe is the starting point; default: the recipe already in the slot), the amounts
-  `coffee`, `taste`, `milk`, `water`, `tea_temperature`, and `brew: true` to also pour
-  it. The machine must be awake; both actions report an error if the machine does not
-  confirm.
+- **Custom recipe actions** (`cremalink_ha.save_recipe`, `cremalink_ha.get_recipe`,
+  `cremalink_ha.delete_recipe`): create, change, read or empty one of the machine's six
+  custom recipes (`slot` 1-6), the way the Coffee Link app builds them: from ingredients.
+  `save_recipe` takes a `name` (up to 10 characters), an `icon` (the picture number of the
+  machine's display; 0-19 are the app's pictures, 20-25 more the machine shows) and the
+  ingredients `coffee` (20-180 ml), `taste` (0-5), `milk` (5-108 s), `froth` (0-2),
+  `milk_first` and `water` (50-300 ml); 0 switches an ingredient off, ingredients left out
+  keep their stored value. `brew: true` also pours it. `get_recipe` returns what a place
+  holds now. The machine must be awake; save and delete report an error if the machine does
+  not confirm.
 
   ```yaml
   action: cremalink_ha.save_recipe
@@ -179,7 +181,6 @@ integration exposes:
     slot: 6
     name: Hot water
     icon: 12
-    template: hot_water
     water: 50
   ```
 
