@@ -4,6 +4,7 @@ import logging
 from datetime import UTC, datetime
 
 from cremalink.ecam import statistics as ecam_statistics
+from cremalink.ecam.phase import PHASES
 from cremalink.ecam.statistics import (
     CLOUD_COUNTER_CANDIDATES,
     STAT_LABELS,
@@ -32,6 +33,8 @@ MONITOR_SENSORS = [
     ("status_name", "mdi:coffee-maker", None, "status"),
     ("progress_percent", "mdi:progress-clock", PERCENTAGE, None),
     ("accessory_name", "mdi:cup", None, "accessory"),
+    # what the machine does while a drink is made; empty when nothing is made
+    ("drink_phase", "mdi:coffee-maker-outline", None, "drink_phase"),
 ]
 
 #: Fields suppressed while the machine is in a standby-like status — the
@@ -104,7 +107,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 key,
                 icon,
                 unit,
-                options=sorted(set(enums.get(enum_key, {}).values())) or None,
+                options=(
+                    list(PHASES)
+                    if key == "drink_phase"
+                    else sorted(set(enums.get(enum_key, {}).values())) or None
+                ),
             )
         )
 
@@ -190,6 +197,8 @@ class CremalinkSensor(_CremalinkEntityBase, SensorEntity, RestoreEntity):
         # standby cache so the last live reading survives a restart (US7).
         # The saved state is often "unknown" (standby already hid the
         # value when it was persisted) — fall back to last_known_value.
+        if self._key == "drink_phase":
+            return  # nothing to remember: no drink is made after a restart
         last = await self.async_get_last_state()
         if last is None:
             return
@@ -228,6 +237,8 @@ class CremalinkSensor(_CremalinkEntityBase, SensorEntity, RestoreEntity):
     def native_value(self):
         """Return the value of the sensor."""
         value = getattr(self.coordinator.data, self._key, None)
+        if self._key == "drink_phase":
+            return value  # None (unknown) while no drink is made
         if self._key in _STANDBY_RETAINED_KEYS and self._machine_in_standby():
             # The machine stops evaluating accessory/progress in standby —
             # keep the last live reading instead of reporting stale bytes.

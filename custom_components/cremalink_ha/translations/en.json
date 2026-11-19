@@ -403,6 +403,20 @@
           "latte_crema_cool": "LatteCrema carafe (cool)",
           "latte_crema_cool_clean": "LatteCrema carafe (cool, clean position)"
         }
+      },
+      "cremalink_drink_phase": {
+        "name": "Phase",
+        "state": {
+          "grinding": "Grinding",
+          "heating_water": "Heating water",
+          "pre_infusion": "Pre-infusion",
+          "preparing": "Preparing",
+          "dispensing": "Dispensing",
+          "dispensing_milk": "Dispensing milk",
+          "hot_water": "Hot water",
+          "steam": "Preparing steam",
+          "finished": "Finished"
+        }
       }
     }
   },
