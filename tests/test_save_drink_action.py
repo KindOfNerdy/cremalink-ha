@@ -4,6 +4,7 @@ import pytest
 from cremalink.domain.device import RecipeParams
 from custom_components.cremalink_ha import select as select_mod
 from custom_components.cremalink_ha.const import DOMAIN
+from custom_components.cremalink_ha import services as services_mod
 from custom_components.cremalink_ha.services import async_setup_services
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
@@ -20,8 +21,19 @@ COMMAND_MAP = {
 }
 
 
-async def _setup(hass, *, status="ready", busy=False, confirmed=True, source="profile"):
+@pytest.fixture(autouse=True)
+def _fast_waits(monkeypatch):
+    monkeypatch.setattr(services_mod, "SAVE_PAUSE_SECONDS", 0)
+    monkeypatch.setattr(services_mod, "SAVE_SETTLE_SECONDS", 0)
+    monkeypatch.setattr(services_mod, "BREW_START_SECONDS", 0)
+    monkeypatch.setattr(services_mod, "MONITOR_POLL_SECONDS", 0)
+
+
+async def _setup(
+    hass, *, status="ready", busy=False, confirmed=True, source="profile", starts=True
+):
     saved, brewed = [], []
+    brew_params = []
     device = make_device(command_map=COMMAND_MAP)
     params = {2: COFFEE, 50: COLD}
     device.recipe_params = lambda bev, **kw: RecipeParams(
@@ -30,7 +42,8 @@ async def _setup(hass, *, status="ready", busy=False, confirmed=True, source="pr
     device.save_profile_recipe = (
         lambda bev, values, **kw: saved.append((bev, values)) or confirmed
     )
-    device.brew = lambda bev, **kw: brewed.append(bev)
+    device.brew = lambda bev, **kw: brewed.append(bev) or brew_params.append(kw)
+    device.brew_params = brew_params
     entry = make_entry()
     await setup_entities(
         hass,
@@ -42,7 +55,12 @@ async def _setup(hass, *, status="ready", busy=False, confirmed=True, source="pr
     device_entry = dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id, identifiers={(DOMAIN, entry.entry_id)}
     )
+    # The monitor shows the drink running once it was sent (unless it never starts).
+    device.get_monitor = lambda: FakeMonitorData(
+        status_name="ready", is_busy=bool(brewed) and starts
+    )
     async_setup_services(hass)
+    _setup.device = device
     return device_entry.id, saved, brewed
 
 
@@ -62,6 +80,15 @@ async def test_changed_values_are_saved(hass):
 async def test_save_and_brew_brews_after_saving(hass):
     device_id, saved, brewed = await _setup(hass)
     await _call(hass, device_id, beverage="coffee", coffee=150, brew=True)
+    assert len(saved) == 1 and brewed == [2]
+    # Brewed like the brew switch: with exactly the saved values.
+    assert _setup.device.brew_params[0]["params"].values == saved[0][1]
+
+
+async def test_save_and_brew_reports_a_drink_that_does_not_start(hass):
+    device_id, saved, brewed = await _setup(hass, starts=False)
+    with pytest.raises(HomeAssistantError, match="did not start"):
+        await _call(hass, device_id, beverage="coffee", coffee=150, brew=True)
     assert len(saved) == 1 and brewed == [2]
 
 
