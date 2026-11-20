@@ -9,7 +9,7 @@ from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -404,7 +404,10 @@ def _async_schedule_catalog_refresh(
     if not minutes:
         return lambda: None
 
+    @callback
     def _tick(_now) -> None:
+        # In the event loop: without @callback HA runs it in a worker thread,
+        # where creating the task fails ("is not the running loop").
         entry.async_create_background_task(
             hass, refresh(), f"{DOMAIN}_{entry.entry_id}_catalog_refresh"
         )
