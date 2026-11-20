@@ -174,8 +174,10 @@ class TestEnglishNamesAreUnchanged:
         friendly = {
             "switch_water_tank_absent": "Water tank missing",
             "switch_door_opened": "Door is open",
+            "switch_clean_knob": "Knob on clean",
             "alarm_beans_empty": "Refill beans",
             "alarm_descale": "Time to descale",
+            "alarm_clean_knob": "Rinse the milk carafe",
         }
         names = _entity_section(EN)["binary_sensor"]
         shared = {b.key for b in SWITCH_BITS.values()} & {
