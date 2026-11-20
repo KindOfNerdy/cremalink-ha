@@ -163,10 +163,16 @@ class TestEnglishNamesAreUnchanged:
         sensors = _entity_section(EN)["sensor"]
         for label, _unit in STAT_LABELS.values():
             assert sensors[f"stat_{label}"]["name"] == label.replace("_", " ").title()
+        # Used-up levels are shown as what is left (agreed 20.11.).
+        left = {
+            "descale_percentage": ("stat_descale_remaining", "Until descaling"),
+            "filter_percentage": ("stat_filter_remaining", "Water filter left"),
+        }
         for logical in CLOUD_COUNTER_CANDIDATES:
-            assert (
-                sensors[f"stat_{logical}"]["name"] == logical.replace("_", " ").title()
+            key, name = left.get(
+                logical, (f"stat_{logical}", logical.replace("_", " ").title())
             )
+            assert sensors[key]["name"] == name
 
     def test_bit_sensor_names_follow_the_library_labels(self):
         # Warnings the card shows say what to do (agreed 20.11.); every other
@@ -248,8 +254,8 @@ class TestStatisticsStateClass:
         by_key = {e.translation_key: e for e in entities}
         for key in (
             "stat_grounds_container_percentage",
-            "stat_descale_percentage",
-            "stat_filter_percentage",
+            "stat_descale_remaining",
+            "stat_filter_remaining",
         ):
             assert by_key[key].state_class == "measurement"
             assert by_key[key].native_unit_of_measurement == "%"

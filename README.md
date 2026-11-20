@@ -67,8 +67,8 @@ integration exposes:
   lane; cloud entries on `native` maps get none (the Ayla cache is
   stale there). `cloud_counters` maps (e.g. Eletta-family machines
   without LAN support) expose their counters on cloud entries instead,
-  plus the grounds container, descale and filter percentages exactly as
-  the machine publishes them, and aborted, iced and cold brew totals
+  plus how full the grounds container is and how much is left until
+  descaling and of the water filter (in %), and aborted, iced and cold brew totals
   where the map lists those datapoints.
 - **Freshness sensors** (diagnostic timestamps): "Last report" is when the
   machine last reported its status; on `cloud_counters` maps "Statistics

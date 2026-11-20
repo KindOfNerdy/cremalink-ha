@@ -7,12 +7,12 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_CONNECTION_TYPE, DOMAIN, STANDBY_STATUSES
 from .coordinator import CremalinkCoordinator
+from .registry import remove_entities
 
 #: Monitor predicates: (key, icon, device class). Names come from the entity
 #: translations, keyed by ``key``.
@@ -100,21 +100,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
     renamed = {bit.key for bit in SWITCH_BITS.values()} - {
         bit.key for bit in switch_table.values()
     }
-    _remove_stale_bit_entities(
-        hass, entry, {"switch": excluded | renamed, "alarm": excluded}
+    remove_entities(
+        hass,
+        "binary_sensor",
+        [f"{entry.entry_id}_switch_{key}" for key in excluded | renamed]
+        + [f"{entry.entry_id}_alarm_{key}" for key in excluded],
     )
-
-
-def _remove_stale_bit_entities(hass, entry, stale: dict[str, set[str]]) -> None:
-    """Drop registry entries of bits the device map excludes or renames."""
-    ent_reg = er.async_get(hass)
-    for source, keys in stale.items():
-        for key in keys:
-            entity_id = ent_reg.async_get_entity_id(
-                "binary_sensor", DOMAIN, f"{entry.entry_id}_{source}_{key}"
-            )
-            if entity_id is not None:
-                ent_reg.async_remove(entity_id)
 
 
 class CremalinkBinarySensor(

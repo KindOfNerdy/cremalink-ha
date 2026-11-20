@@ -3,6 +3,8 @@
 import time
 
 from cremalink.ecam.statistics import (
+    CLOUD_COUNTER_CANDIDATES,
+    StatisticsReport,
     interpret,
     resolve_cloud_breakdowns,
     resolve_cloud_counters,
@@ -14,6 +16,8 @@ from custom_components.cremalink_ha.const import (
     CONNECTION_CLOUD,
     CONNECTION_LOCAL,
 )
+
+from homeassistant.helpers import entity_registry as er
 
 from tests.helpers import (
     FakeMonitorData,
@@ -294,3 +298,49 @@ class TestCoordinatorSlowLane:
         await _settle(hass, coordinator)
         assert calls == [1]  # normal cadence only
         assert coordinator._statistics_due_at is None
+
+
+class TestLevelsLeft:
+    """Descaling and filter count up as used; the sensors show what is left."""
+
+    async def _levels(self, hass):
+        datapoints = [
+            CLOUD_COUNTER_CANDIDATES[logical][0]
+            for logical in (
+                "grounds_container_percentage",
+                "descale_percentage",
+                "filter_percentage",
+            )
+        ]
+        _, entities = await _setup(
+            hass,
+            connection=CONNECTION_CLOUD,
+            statistics_source="cloud_counters",
+            statistics_datapoints=datapoints,
+        )
+        by_id = {e.unique_id: e for e in entities}
+        report = StatisticsReport(source="cloud_counters", complete=True)
+        report.cloud_counters = {
+            "grounds_container_percentage": 35,
+            "descale_percentage": 32,
+            "filter_percentage": 98,
+        }
+        for entity in by_id.values():
+            entity.coordinator.statistics = report
+        return by_id
+
+    async def test_left_values(self, hass):
+        by_id = await self._levels(hass)
+        assert by_id["entry1_stat_descale_remaining"].native_value == 68
+        assert by_id["entry1_stat_filter_remaining"].native_value == 2
+        # The grounds container is a fill level and stays as it is.
+        assert by_id["entry1_stat_grounds_container_percentage"].native_value == 35
+        assert "entry1_stat_descale_percentage" not in by_id
+
+    async def test_old_used_up_entities_are_removed(self, hass):
+        ent_reg = er.async_get(hass)
+        old = ent_reg.async_get_or_create(
+            "sensor", "cremalink_ha", "entry1_stat_descale_percentage"
+        )
+        await self._levels(hass)
+        assert ent_reg.async_get(old.entity_id) is None

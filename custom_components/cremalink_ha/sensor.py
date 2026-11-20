@@ -23,6 +23,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_CONNECTION_TYPE, CONNECTION_CLOUD, DOMAIN, STANDBY_STATUSES
 from .coordinator import CremalinkCoordinator
+from .registry import remove_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,8 +46,16 @@ _STANDBY_RETAINED_KEYS = {"progress_percent", "accessory_name"}
 #: Cloud "counters" that are state readings, not lifetime counters.
 _NON_COUNTER_LOGICAL = {"descale_status", "water_hardness"}
 
-#: Maintenance levels the machine publishes as percentages (shown as is).
+#: Maintenance levels the machine publishes as percentages.
 _PERCENT_LOGICAL = getattr(ecam_statistics, "CLOUD_COUNTER_PERCENTAGES", frozenset())
+
+#: Levels the machine counts up as "used" (100 % = due), shown as what is left:
+#: logical counter -> key of the entity showing 100 - value. The grounds container
+#: is a fill level and stays as it is (directions checked in the HA history 20.11.).
+_REMAINING_LOGICAL = {
+    "descale_percentage": "descale_remaining",
+    "filter_percentage": "filter_remaining",
+}
 
 _COUNTER_ICONS = {
     "grounds_container_percentage": "mdi:delete-variant",
@@ -146,6 +155,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
         entities.append(CremalinkStatisticsUpdatedSensor(coordinator, entry))
 
     async_add_entities(entities)
+    # The used-up levels were shown as such before they became "left" sensors.
+    remove_entities(
+        hass,
+        "sensor",
+        [f"{entry.entry_id}_stat_{logical}" for logical in _REMAINING_LOGICAL],
+    )
 
 
 class _CremalinkEntityBase(CoordinatorEntity[CremalinkCoordinator]):
@@ -394,7 +409,8 @@ class CremalinkCloudCounterSensor(_StatisticsSensorBase, SensorEntity):
     def __init__(self, coordinator, entry, logical):
         super().__init__(coordinator, entry)
         self._logical = logical
-        self._attr_translation_key = f"stat_{logical}"
+        key = _REMAINING_LOGICAL.get(logical, logical)
+        self._attr_translation_key = f"stat_{key}"
         if logical in _PERCENT_LOGICAL:
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_native_unit_of_measurement = PERCENTAGE
@@ -404,7 +420,7 @@ class CremalinkCloudCounterSensor(_StatisticsSensorBase, SensorEntity):
                 if logical in _NON_COUNTER_LOGICAL
                 else SensorStateClass.TOTAL_INCREASING
             )
-        self._attr_unique_id = f"{entry.entry_id}_stat_{logical}"
+        self._attr_unique_id = f"{entry.entry_id}_stat_{key}"
         self._attr_icon = _COUNTER_ICONS.get(logical, "mdi:counter")
 
     @property
@@ -413,6 +429,8 @@ class CremalinkCloudCounterSensor(_StatisticsSensorBase, SensorEntity):
         if report is None:
             return self._last_value
         value = report.cloud_counters.get(self._logical)
+        if value is not None and self._logical in _REMAINING_LOGICAL:
+            value = max(0, min(100, 100 - value))
         if value is not None:
             self._last_value = value
         return self._last_value
