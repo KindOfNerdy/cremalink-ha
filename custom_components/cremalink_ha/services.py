@@ -21,6 +21,7 @@ favorites) from the cloud again right now; it is also done every few minutes.
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
@@ -45,7 +46,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.event import async_call_later
 
-from .const import DOMAIN, NOT_READY_STATUSES
+from .const import DOMAIN, NOT_BREWING_STATUSES, NOT_READY_STATUSES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -358,6 +359,41 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
     coordinator.async_update_listeners()
 
 
+# After a save the app keeps its loading screen up for 10 s on Wi-Fi machines;
+# brew no earlier than SAVE_PAUSE_SECONDS and once the machine is idle.
+SAVE_PAUSE_SECONDS = 3.0
+SAVE_SETTLE_SECONDS = 10.0
+# A brew shows up on the monitor after a few republishes (every 2-3 s).
+BREW_START_SECONDS = 20.0
+MONITOR_POLL_SECONDS = 1.0
+
+
+def _monitor_brewing(monitor) -> bool:
+    status = getattr(monitor, "status_name", None)
+    return (
+        status is not None
+        and status not in NOT_BREWING_STATUSES
+        and bool(getattr(monitor, "is_busy", False))
+    )
+
+
+def _wait_for_monitor(
+    device, condition, timeout: float, pause: float = MONITOR_POLL_SECONDS
+) -> bool:
+    """Poll the machine's monitor until ``condition`` holds (False on timeout)."""
+    deadline = time.monotonic() + timeout
+    time.sleep(pause)
+    while True:
+        try:
+            if condition(device.get_monitor()):
+                return True
+        except (OSError, RuntimeError, ValueError) as err:
+            _LOGGER.debug("monitor read failed while waiting: %s", err)
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(MONITOR_POLL_SECONDS)
+
+
 async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
     """Keep changed values of a standard drink in the active profile (app: save)."""
     data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
@@ -391,8 +427,22 @@ async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
         if not device.save_profile_recipe(beverage_id, values):
             return False
         if brew:
-            # The app's two steps: save, then brew the now stored recipe.
-            device.brew(beverage_id)
+            # The app's two steps: save, then brew. A brew sent right after the
+            # save was ignored by the machine (20.11.), so wait until it is idle
+            # again, brew the saved values the way the brew switch does and
+            # check that the drink starts.
+            _wait_for_monitor(
+                device,
+                lambda m: not _monitor_brewing(m),
+                SAVE_SETTLE_SECONDS,
+                pause=SAVE_PAUSE_SECONDS,
+            )
+            device.brew(beverage_id, params=replace(params, values=values))
+            if not _wait_for_monitor(device, _monitor_brewing, BREW_START_SECONDS):
+                raise HomeAssistantError(
+                    f"{label} was saved, but the machine did not start it; "
+                    "brew it again."
+                )
         return True
 
     try:
