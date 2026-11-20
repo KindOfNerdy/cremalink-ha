@@ -18,12 +18,17 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .brewing import (
+    async_drink_label,
+    brew_problems,
+    is_brewing,
+    raise_brew_problems,
+    raise_unless_ready,
+)
 from .const import (
     BUTTON_UNAVAILABLE_STATUSES,
     CONF_CONNECTION_TYPE,
     DOMAIN,
-    NOT_BREWING_STATUSES,
-    NOT_READY_STATUSES,
     STANDBY_STATUSES,
 )
 from .coordinator import CremalinkCoordinator
@@ -61,7 +66,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = [CremalinkPowerSwitch(coordinator, device, entry)]
     session = data.get("recipe_session")
     if session is not None:
-        entities.append(CremalinkBrewSwitch(coordinator, device, session, entry))
+        brew_switch = CremalinkBrewSwitch(coordinator, device, session, entry)
+        # save_drink and brew start drinks through it, so they show as running
+        # at once like a press of the switch.
+        data["brew_switch"] = brew_switch
+        entities.append(brew_switch)
     capabilities = getattr(device, "capabilities", {}) or {}
     for key, suffix, icon in SETTING_SWITCHES:
         setting = SETTING_BIT_MAPS[key]
@@ -338,15 +347,7 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
         return target
 
     def _brewing(self):
-        """Monitor says a brewing action is running (same rule the drink
-        buttons used): non-standby status + the busy/action byte set."""
-        data = self.coordinator.data
-        return bool(
-            data
-            and data.status_name is not None
-            and data.status_name not in NOT_BREWING_STATUSES
-            and data.is_busy
-        )
+        return is_brewing(self.coordinator.data)
 
     @property
     def is_on(self):
@@ -380,11 +381,7 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
             _LOGGER.debug("brew already requested, waiting for the machine")
             return
         data = self.coordinator.data
-        if data:
-            if data.status_name in NOT_READY_STATUSES:
-                raise HomeAssistantError("The machine is not ready; turn it on first.")
-            if data.is_busy:
-                raise HomeAssistantError("The machine is busy; wait until it is ready.")
+        raise_unless_ready(data)
         beverage_id = self.session.selected_beverage
         if beverage_id is None:
             raise HomeAssistantError("Select a recipe first.")
@@ -396,6 +393,13 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
                 "Recipe parameters are not loaded yet for the selected "
                 "recipe/profile — wait for them to appear, then brew."
             )
+        values = dict(getattr(self.session.params, "values", None) or {})
+        values.update(self.session.overrides)
+        if brew_problems(data, values):
+            label = await async_drink_label(
+                self.hass, self.device, beverage_id, beverage_id
+            )
+            raise_brew_problems(data, values, label)
         await self._async_command(
             True,
             partial(
@@ -405,6 +409,12 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
                 params=self.session.params,
             ),
         )
+
+    async def async_start(self, call) -> None:
+        """Start a drink sent by an action: shown as running at once."""
+        if self._pending_target() is True:
+            raise HomeAssistantError("A drink was just started; wait for the machine.")
+        await self._async_command(True, call)
 
     async def async_turn_off(self, **kwargs):
         await self._async_command(False, partial(self.device.do, "stop"))

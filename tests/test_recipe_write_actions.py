@@ -15,7 +15,14 @@ EMPTY = {1: 0, 2: 255, 15: 0, 9: 0, 12: 0, 28: 0, 25: 0, 11: 255}
 
 
 async def _setup(
-    hass, *, stored=None, status="ready", confirmed=True, busy=False, source="profile"
+    hass,
+    *,
+    stored=None,
+    status="ready",
+    confirmed=True,
+    busy=False,
+    source="profile",
+    **monitor,
 ):
     saved, deleted = [], []
     device = make_device(command_map={})
@@ -32,7 +39,7 @@ async def _setup(
         entry,
         device,
         select_mod,
-        FakeMonitorData(status_name=status, is_busy=busy),
+        FakeMonitorData(status_name=status, is_busy=busy, **monitor),
     )
     device_entry = dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id, identifiers={(DOMAIN, entry.entry_id)}
@@ -89,6 +96,21 @@ class TestSaveRecipe:
         await _save(hass, device_id, water=50, brew=True)
 
         assert saved[0][1] == {"brew": True}
+
+    async def test_brew_waits_for_the_needed_accessory(self, hass):
+        # Like the app: hot water needs the spout before the drink is sent.
+        device_id, saved, _ = await _setup(hass, accessory_code=0)
+
+        with pytest.raises(HomeAssistantError, match="hot water spout not attached"):
+            await _save(hass, device_id, water=50, brew=True)
+        assert saved == []
+
+    async def test_saving_alone_needs_no_accessory(self, hass):
+        device_id, saved, _ = await _setup(hass, accessory_code=0)
+
+        await _save(hass, device_id, water=50)
+
+        assert len(saved) == 1
 
     async def test_nothing_switched_on_is_refused(self, hass):
         device_id, saved, _ = await _setup(hass)

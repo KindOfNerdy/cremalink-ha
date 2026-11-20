@@ -59,9 +59,10 @@ STANDBY_STATUSES = {"in_standby", "going_to_sleep", "sleeping", "deep_sleep"}
 NOT_READY_STATUSES = STANDBY_STATUSES | {"waking_up"}
 
 #: Statuses in which the monitor's action byte does not mean "a drink is
-#: being brewed": the standby family (the byte stays latched), waking up, and
-#: the power-on/off rinse. Button availability must not follow it there.
-NOT_BREWING_STATUSES = NOT_READY_STATUSES | {"rinsing"}
+#: being brewed": the standby family (the byte stays latched), waking up, the
+#: power-on/off rinse and the milk carafe clean (status 12, ~25 s, live
+#: 20.11.). Button availability must not follow it there.
+NOT_BREWING_STATUSES = NOT_READY_STATUSES | {"rinsing", "cleaning_milk"}
 
 #: Device-map commands that have an entity translation (``cmd_<command>``).
 #: Commands of custom maps fall back to a generated English name.

@@ -25,7 +25,6 @@ COMMAND_MAP = {
 def _fast_waits(monkeypatch):
     monkeypatch.setattr(services_mod, "SAVE_PAUSE_SECONDS", 0)
     monkeypatch.setattr(services_mod, "SAVE_SETTLE_SECONDS", 0)
-    monkeypatch.setattr(services_mod, "BREW_START_SECONDS", 0)
     monkeypatch.setattr(services_mod, "MONITOR_POLL_SECONDS", 0)
 
 
@@ -61,6 +60,7 @@ async def _setup(
     )
     async_setup_services(hass)
     _setup.device = device
+    _setup.coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     return device_entry.id, saved, brewed
 
 
@@ -85,11 +85,30 @@ async def test_save_and_brew_brews_after_saving(hass):
     assert _setup.device.brew_params[0]["params"].values == saved[0][1]
 
 
-async def test_save_and_brew_reports_a_drink_that_does_not_start(hass):
+async def test_save_and_brew_has_no_start_deadline(hass):
+    # As in the app: the drink is sent and shown as running; a coffee shows
+    # up busy only after ~30 s, so there is no "did not start" error.
     device_id, saved, brewed = await _setup(hass, starts=False)
-    with pytest.raises(HomeAssistantError, match="did not start"):
-        await _call(hass, device_id, beverage="coffee", coffee=150, brew=True)
+    await _call(hass, device_id, beverage="coffee", coffee=150, brew=True)
     assert len(saved) == 1 and brewed == [2]
+
+
+async def test_save_and_brew_stops_before_saving_when_the_tank_is_missing(hass):
+    device_id, saved, brewed = await _setup(hass)
+    _setup.coordinator.data = FakeMonitorData(
+        status_name="ready", is_busy=False, is_watertank_empty=True
+    )
+    with pytest.raises(
+        HomeAssistantError, match=r"^Coffee cannot start: water tank empty"
+    ):
+        await _call(hass, device_id, beverage=2, coffee=150, brew=True)
+    assert saved == [] and brewed == []
+
+
+async def test_messages_name_the_drink_when_the_card_sends_its_id(hass):
+    device_id, _saved, _brewed = await _setup(hass, confirmed=False)
+    with pytest.raises(HomeAssistantError, match=r"did not confirm Coffee;"):
+        await _call(hass, device_id, beverage=2, coffee=150)
 
 
 async def test_amounts_are_clamped_to_the_drink_limits(hass):

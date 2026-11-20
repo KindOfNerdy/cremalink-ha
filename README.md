@@ -130,6 +130,11 @@ integration exposes:
   - The brew switch turns on right away and stays on until the machine
     reports the drink (over the cloud that can take ~30 s); a second tap
     in that time does not start a second drink.
+  - Before a drink is sent, the machine's state is checked like the app
+    does: a missing or empty water tank, a full or missing grounds
+    container, an open door, a blocking alarm or a missing accessory
+    (milk carafe, hot water spout) stops it with a message naming the
+    cause. Hints such as descale or empty drip tray do not.
 - **Stop brewing**: unchanged — available while a brew runs.
 - **Brew action** (`cremalink_ha.brew`): one call for automations and
   scripts. Give the machine (`device_id`) and the drink (name, command
@@ -187,7 +192,8 @@ integration exposes:
 - **Save drink action** (`cremalink_ha.save_drink`): keeps changed values of a standard
   drink in the active profile, like *save* on the Coffee Link app's brew screen. Give
   `beverage` and the amounts to change (`coffee`, `taste`, `milk`, `water`,
-  `tea_temperature`; clamped to the drink's limits); `brew: true` pours it afterwards.
+  `tea_temperature`; clamped to the drink's limits); `brew: true` pours it afterwards
+  and shows it on the brew switch like a press of it.
   For cold and cold to-go drinks the machine keeps the coffee, milk and water amounts
   fixed, so those are refused there. Only while the machine is ready and idle.
 

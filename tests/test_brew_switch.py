@@ -112,6 +112,34 @@ class TestBrewSwitchActions:
         with pytest.raises(HomeAssistantError, match="busy"):
             await _brew_switch(entities).async_turn_on()
 
+    async def test_turn_on_stops_when_the_machine_cannot_make_it(self, hass):
+        calls = []
+        _, entities, session = await _setup(
+            hass,
+            monitor=FakeMonitorData(
+                status_name="ready",
+                switch_states=lambda: {"door_opened": True},
+            ),
+            brew=lambda *a, **kw: calls.append(a),
+        )
+        session.select(0xC8)
+        session.params = _params(0xC8)
+        session.loading = False
+        with pytest.raises(HomeAssistantError, match="cannot start: door open"):
+            await _brew_switch(entities).async_turn_on()
+        assert calls == []
+
+    async def test_start_from_an_action_shows_running_at_once(self, hass):
+        calls = []
+        _, entities, _ = await _setup(hass)
+        switch = _brew_switch(entities)
+        await switch.async_start(lambda: calls.append("brew"))
+        assert calls == ["brew"] and switch.is_on is True
+        # A second drink is refused while the first is not on the monitor yet.
+        with pytest.raises(HomeAssistantError, match="just started"):
+            await switch.async_start(lambda: calls.append("again"))
+        assert calls == ["brew"]
+
     async def test_turn_off_sends_stop(self, hass):
         calls = []
         _, entities, _ = await _setup(hass, do=lambda cmd: calls.append(cmd))

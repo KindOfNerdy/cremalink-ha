@@ -3,17 +3,15 @@
 import logging
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .brewing import is_brewing, raise_unless_ready
 from .const import (
     BUTTON_UNAVAILABLE_STATUSES,
     CONF_CONNECTION_TYPE,
     DOMAIN,
-    NOT_BREWING_STATUSES,
-    NOT_READY_STATUSES,
     TRANSLATED_COMMANDS,
 )
 from .coordinator import CremalinkCoordinator
@@ -116,7 +114,7 @@ class CremalinkButton(CoordinatorEntity[CremalinkCoordinator], ButtonEntity):
             # No monitor reading yet (startup): do not claim availability
             # that the first real reading may withdraw seconds later.
             return False
-        brewing = status not in NOT_BREWING_STATUSES and bool(data.is_busy)
+        brewing = is_brewing(data)
         if self._title == "Stop":
             return brewing
         return status not in BUTTON_UNAVAILABLE_STATUSES and not brewing
@@ -125,10 +123,7 @@ class CremalinkButton(CoordinatorEntity[CremalinkCoordinator], ButtonEntity):
         """Handle the button press."""
         data = self.coordinator.data
         # Stop is always sent (harmless when idle); drinks need a ready machine.
-        if self._title != "Stop" and data:
-            if data.status_name in NOT_READY_STATUSES:
-                raise HomeAssistantError("The machine is not ready; turn it on first.")
-            if data.is_busy:
-                raise HomeAssistantError("The machine is busy; wait until it is ready.")
+        if self._title != "Stop":
+            raise_unless_ready(data)
         await self.hass.async_add_executor_job(self.device.do, self._cmd)
         await self.coordinator.async_request_refresh()
