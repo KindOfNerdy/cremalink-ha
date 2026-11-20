@@ -5,10 +5,16 @@ from cremalink.domain.device import RecipeParams
 from custom_components.cremalink_ha import select as select_mod
 from custom_components.cremalink_ha.const import DOMAIN
 from custom_components.cremalink_ha.services import async_setup_services
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 
-from tests.helpers import FakeMonitorData, make_device, make_entry, setup_entities
+from tests.helpers import (
+    raises_message,
+    FakeMonitorData,
+    make_device,
+    make_entry,
+    setup_entities,
+)
 
 LATTE_XL = {1: 55, 2: 3, 15: 0, 9: 500, 12: 0, 28: 2, 25: 1, 11: 1}
 EMPTY = {1: 0, 2: 255, 15: 0, 9: 0, 12: 0, 28: 0, 25: 0, 11: 255}
@@ -101,7 +107,9 @@ class TestSaveRecipe:
         # Like the app: hot water needs the spout before the drink is sent.
         device_id, saved, _ = await _setup(hass, accessory_code=0)
 
-        with pytest.raises(HomeAssistantError, match="hot water spout not attached"):
+        with raises_message(
+            "cannot_start", drink="Test", problems="hot water spout missing"
+        ):
             await _save(hass, device_id, water=50, brew=True)
         assert saved == []
 
@@ -129,14 +137,14 @@ class TestSaveRecipe:
     async def test_an_unreadable_stored_recipe_is_refused(self, hass):
         device_id, saved, _ = await _setup(hass, source="default")
 
-        with pytest.raises(HomeAssistantError, match="stored recipe"):
+        with raises_message("stored_recipe_place"):
             await _save(hass, device_id, water=50)
         assert saved == []
 
     async def test_standby_is_refused(self, hass):
         device_id, saved, _ = await _setup(hass, status="in_standby")
 
-        with pytest.raises(HomeAssistantError, match="not ready"):
+        with raises_message("not_ready"):
             await _save(hass, device_id, water=50)
         assert saved == []
 
@@ -144,14 +152,14 @@ class TestSaveRecipe:
     async def test_a_busy_machine_is_refused(self, hass, brew):
         device_id, saved, _ = await _setup(hass, busy=True)
 
-        with pytest.raises(HomeAssistantError, match="busy"):
+        with raises_message("busy"):
             await _save(hass, device_id, water=50, brew=brew)
         assert saved == []
 
     async def test_unconfirmed_write_is_an_error(self, hass):
         device_id, _, _ = await _setup(hass, confirmed=False)
 
-        with pytest.raises(HomeAssistantError, match="did not confirm"):
+        with raises_message("not_confirmed_recipe"):
             await _save(hass, device_id, water=50)
 
     @pytest.mark.parametrize(
@@ -224,7 +232,7 @@ class TestDeleteRecipe:
     async def test_a_busy_machine_is_refused(self, hass):
         device_id, _, deleted = await _setup(hass, busy=True)
 
-        with pytest.raises(HomeAssistantError, match="busy"):
+        with raises_message("busy"):
             await hass.services.async_call(
                 DOMAIN,
                 "delete_recipe",
@@ -245,7 +253,7 @@ class TestDeleteRecipe:
     async def test_unconfirmed_deletion_is_an_error(self, hass):
         device_id, _, _ = await _setup(hass, confirmed=False)
 
-        with pytest.raises(HomeAssistantError, match="did not confirm"):
+        with raises_message("not_confirmed_delete"):
             await hass.services.async_call(
                 DOMAIN,
                 "delete_recipe",

@@ -163,9 +163,9 @@
       "is_busy": { "name": "Beschäftigt" },
       "is_idle": { "name": "Leerlauf" },
       "is_watertank_open": { "name": "Wassertank offen" },
-      "is_watertank_empty": { "name": "Wassertank leer" },
-      "is_waste_container_full": { "name": "Kaffeesatzbehälter voll" },
-      "is_waste_container_missing": { "name": "Kaffeesatzbehälter fehlt" },
+      "is_watertank_empty": { "name": "Wasser nachfüllen" },
+      "is_waste_container_full": { "name": "Satzbehälter leeren" },
+      "is_waste_container_missing": { "name": "Satzbehälter fehlt" },
       "switch_water_spout": { "name": "Wasserdüse" },
       "switch_motor_up": { "name": "Motor oben" },
       "switch_motor_down": { "name": "Motor unten" },
@@ -174,14 +174,18 @@
       "switch_water_level_low": { "name": "Wasserstand niedrig" },
       "switch_coffee_jug_present": { "name": "Kaffeekanne eingesetzt" },
       "switch_milk_carafe_present": { "name": "Milchkaraffe eingesetzt" },
+      "switch_milk_carafe_hot": { "name": "Heiße Milchkaraffe dran" },
+      "switch_milk_carafe_hot_clean": { "name": "Heiße Milchkaraffe auf Reinigen" },
+      "switch_milk_carafe_cold": { "name": "Kalte Milchkaraffe dran" },
+      "switch_milk_carafe_cold_clean": { "name": "Kalte Milchkaraffe auf Reinigen" },
       "switch_choco_tank_present": { "name": "Schokoladenbehälter eingesetzt" },
       "switch_clean_knob": { "name": "Reinigungsknopf (Schalter)" },
-      "switch_door_opened": { "name": "Tür geöffnet" },
+      "switch_door_opened": { "name": "Tür ist offen" },
       "switch_preground_door_opened": { "name": "Pulverkaffee-Klappe geöffnet" },
-      "alarm_descale": { "name": "Entkalkung erforderlich" },
+      "alarm_descale": { "name": "Zeit zum Entkalken" },
       "alarm_replace_water_filter": { "name": "Wasserfilter wechseln" },
       "alarm_ground_too_fine": { "name": "Kaffee zu fein gemahlen" },
-      "alarm_beans_empty": { "name": "Kaffeebohnen leer" },
+      "alarm_beans_empty": { "name": "Bohnen nachfüllen" },
       "alarm_machine_to_service": { "name": "Wartung erforderlich" },
       "alarm_heater_probe_failure": { "name": "Fehler Kaffee-Heizungssensor" },
       "alarm_too_much_coffee": { "name": "Zu viel Kaffee" },
@@ -260,19 +264,19 @@
       "cremalink_status_name": {
         "name": "Status",
         "state": {
-          "in_standby": "Standby",
+          "in_standby": "Schläft",
           "waking_up": "Wacht auf",
-          "going_to_sleep": "Geht in Standby",
-          "descaling": "Entkalkung läuft",
-          "preparing_steam": "Dampf wird erzeugt",
+          "going_to_sleep": "Schläft gleich ein",
+          "descaling": "Entkalkt",
+          "preparing_steam": "Macht Dampf",
           "ready": "Bereit",
-          "rinsing": "Spülen",
-          "rinsing_water_filter": "Wasserfilter wird gespült",
-          "preparing_milk": "Milch wird zubereitet",
-          "dispensing_hot_water": "Heißwasser wird ausgegeben",
-          "cleaning_milk": "Spülen",
-          "preparing_chocolate": "Schokolade wird zubereitet",
-          "preparing_milk_alt": "Milch wird zubereitet",
+          "rinsing": "Spült",
+          "rinsing_water_filter": "Spült den Filter",
+          "preparing_milk": "Macht Milch",
+          "dispensing_hot_water": "Heißes Wasser läuft",
+          "cleaning_milk": "Spült",
+          "preparing_chocolate": "Macht Schokolade",
+          "preparing_milk_alt": "Macht Milch",
           "unknown_29": "Beschäftigt"
         }
       },
@@ -291,15 +295,15 @@
       "cremalink_drink_phase": {
         "name": "Vorgang",
         "state": {
-          "grinding": "Mahlen",
-          "heating_water": "Aufheizen von Wasser",
-          "pre_infusion": "Vorbrühvorgang",
-          "preparing": "Zubereitung",
-          "dispensing": "Ausgabe",
-          "dispensing_milk": "Ausgabe von Milch",
-          "hot_water": "Heißwasser",
-          "steam": "Zubereitung von Dampf",
-          "finished": "Fertig"
+          "grinding": "Mahlt",
+          "heating_water": "Heizt auf",
+          "pre_infusion": "Brüht vor",
+          "preparing": "Bereitet zu",
+          "dispensing": "Läuft in die Tasse",
+          "dispensing_milk": "Milch läuft",
+          "hot_water": "Heißes Wasser läuft",
+          "steam": "Macht Dampf",
+          "finished": "Fertig – lass es dir schmecken"
         }
       }
     }
@@ -482,6 +486,77 @@
           "description": "Danach ausgeben."
         }
       }
+    }
+  },
+  "exceptions": {
+    "not_ready": {
+      "message": "Die Maschine schläft, weck sie erst auf."
+    },
+    "busy": {
+      "message": "Die Maschine ist noch beschäftigt, kurz warten."
+    },
+    "just_started": {
+      "message": "Da läuft schon was, kurz warten."
+    },
+    "cannot_start": {
+      "message": "{drink} geht gerade nicht: {problems}."
+    },
+    "stored_recipe": {
+      "message": "Die Werte von {drink} ließen sich nicht lesen, probier's gleich nochmal."
+    },
+    "stored_recipe_place": {
+      "message": "Das Rezept ließ sich nicht lesen, probier's gleich nochmal."
+    },
+    "not_confirmed_drink": {
+      "message": "Die Maschine hat {drink} nicht bestätigt, schau kurz nach."
+    },
+    "not_confirmed_recipe": {
+      "message": "Die Maschine hat das Rezept nicht bestätigt, schau kurz nach."
+    },
+    "not_confirmed_favorites": {
+      "message": "Die Maschine hat die Favoriten nicht bestätigt, schau kurz nach."
+    },
+    "not_confirmed_delete": {
+      "message": "Die Maschine hat das Löschen nicht bestätigt, schau kurz nach."
+    },
+    "brew_failed": {
+      "message": "{drink} ließ sich nicht starten: {error}"
+    },
+    "save_failed": {
+      "message": "{drink} ließ sich nicht speichern: {error}"
+    },
+    "saved_not_started": {
+      "message": "{drink} ist gespeichert, ließ sich aber nicht starten: {error}"
+    },
+    "recipe_save_failed": {
+      "message": "Das Rezept ließ sich nicht speichern: {error}"
+    },
+    "recipe_read_failed": {
+      "message": "Das Rezept ließ sich nicht lesen: {error}"
+    },
+    "recipe_delete_failed": {
+      "message": "Das Rezept ließ sich nicht löschen: {error}"
+    },
+    "favorites_failed": {
+      "message": "Die Favoriten ließen sich nicht speichern: {error}"
+    },
+    "problem_carafe_on_clean": {
+      "message": "Milchkaraffe steht auf Reinigen"
+    },
+    "problem_accessory_1": {
+      "message": "Heißwasser-Auslauf fehlt"
+    },
+    "problem_accessory_2": {
+      "message": "heiße Milchkaraffe fehlt"
+    },
+    "problem_accessory_3": {
+      "message": "Schokotank fehlt"
+    },
+    "problem_accessory_6": {
+      "message": "kalte Milchkaraffe fehlt"
+    },
+    "problem_accessory": {
+      "message": "Zubehör fehlt"
     }
   }
 }

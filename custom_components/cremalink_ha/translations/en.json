@@ -289,25 +289,29 @@
       "is_busy": { "name": "Busy" },
       "is_idle": { "name": "Idle" },
       "is_watertank_open": { "name": "Water Tank Open" },
-      "is_watertank_empty": { "name": "Water Tank Empty" },
-      "is_waste_container_full": { "name": "Waste Container Full" },
-      "is_waste_container_missing": { "name": "Waste Container Missing" },
+      "is_watertank_empty": { "name": "Refill water" },
+      "is_waste_container_full": { "name": "Empty the grounds container" },
+      "is_waste_container_missing": { "name": "Grounds container missing" },
       "switch_water_spout": { "name": "Water Spout" },
       "switch_motor_up": { "name": "Motor Up" },
       "switch_motor_down": { "name": "Motor Down" },
-      "switch_water_tank_absent": { "name": "Water Tank Absent" },
+      "switch_water_tank_absent": { "name": "Water tank missing" },
       "switch_knob": { "name": "Knob" },
       "switch_water_level_low": { "name": "Water Level Low" },
       "switch_coffee_jug_present": { "name": "Coffee Jug Present" },
       "switch_milk_carafe_present": { "name": "Milk Carafe Present" },
+      "switch_milk_carafe_hot": { "name": "Hot milk carafe attached" },
+      "switch_milk_carafe_hot_clean": { "name": "Hot milk carafe on clean" },
+      "switch_milk_carafe_cold": { "name": "Cold milk carafe attached" },
+      "switch_milk_carafe_cold_clean": { "name": "Cold milk carafe on clean" },
       "switch_choco_tank_present": { "name": "Chocolate Tank Present" },
       "switch_clean_knob": { "name": "Clean Knob (switch)" },
-      "switch_door_opened": { "name": "Door Opened" },
+      "switch_door_opened": { "name": "Door is open" },
       "switch_preground_door_opened": { "name": "Preground Door Opened" },
-      "alarm_descale": { "name": "Descale Needed" },
+      "alarm_descale": { "name": "Time to descale" },
       "alarm_replace_water_filter": { "name": "Replace Water Filter" },
       "alarm_ground_too_fine": { "name": "Coffee Ground Too Fine" },
-      "alarm_beans_empty": { "name": "Coffee Beans Empty" },
+      "alarm_beans_empty": { "name": "Refill beans" },
       "alarm_machine_to_service": { "name": "Service Required" },
       "alarm_heater_probe_failure": { "name": "Coffee Heater Probe Failure" },
       "alarm_too_much_coffee": { "name": "Too Much Coffee" },
@@ -386,19 +390,19 @@
       "cremalink_status_name": {
         "name": "Status",
         "state": {
-          "in_standby": "Standby",
+          "in_standby": "Asleep",
           "waking_up": "Waking up",
-          "going_to_sleep": "Going to sleep",
+          "going_to_sleep": "Dozing off",
           "descaling": "Descaling",
-          "preparing_steam": "Preparing steam",
+          "preparing_steam": "Making steam",
           "ready": "Ready",
           "rinsing": "Rinsing",
-          "rinsing_water_filter": "Rinsing water filter",
-          "preparing_milk": "Preparing milk",
-          "dispensing_hot_water": "Dispensing hot water",
+          "rinsing_water_filter": "Rinsing the filter",
+          "preparing_milk": "Making milk",
+          "dispensing_hot_water": "Hot water on its way",
           "cleaning_milk": "Rinsing",
-          "preparing_chocolate": "Preparing chocolate",
-          "preparing_milk_alt": "Preparing milk",
+          "preparing_chocolate": "Making chocolate",
+          "preparing_milk_alt": "Making milk",
           "unknown_29": "Busy"
         }
       },
@@ -418,14 +422,14 @@
         "name": "Phase",
         "state": {
           "grinding": "Grinding",
-          "heating_water": "Heating water",
-          "pre_infusion": "Pre-infusion",
+          "heating_water": "Heating up",
+          "pre_infusion": "Pre-brewing",
           "preparing": "Preparing",
-          "dispensing": "Dispensing",
-          "dispensing_milk": "Dispensing milk",
-          "hot_water": "Hot water",
-          "steam": "Preparing steam",
-          "finished": "Finished"
+          "dispensing": "Pouring into the cup",
+          "dispensing_milk": "Milk on its way",
+          "hot_water": "Hot water on its way",
+          "steam": "Making steam",
+          "finished": "Done – enjoy"
         }
       }
     }
@@ -608,6 +612,77 @@
           "description": "Pour it afterwards."
         }
       }
+    }
+  },
+  "exceptions": {
+    "not_ready": {
+      "message": "The machine is asleep; wake it up first."
+    },
+    "busy": {
+      "message": "The machine is still busy; give it a moment."
+    },
+    "just_started": {
+      "message": "A drink is already on its way; give it a moment."
+    },
+    "cannot_start": {
+      "message": "{drink} can't start right now: {problems}."
+    },
+    "stored_recipe": {
+      "message": "Couldn't read the values of {drink}; try again in a moment."
+    },
+    "stored_recipe_place": {
+      "message": "Couldn't read the recipe; try again in a moment."
+    },
+    "not_confirmed_drink": {
+      "message": "The machine didn't confirm {drink}; have a quick look at it."
+    },
+    "not_confirmed_recipe": {
+      "message": "The machine didn't confirm the recipe; have a quick look at it."
+    },
+    "not_confirmed_favorites": {
+      "message": "The machine didn't confirm the favourites; have a quick look at it."
+    },
+    "not_confirmed_delete": {
+      "message": "The machine didn't confirm the deletion; have a quick look at it."
+    },
+    "brew_failed": {
+      "message": "Couldn't start {drink}: {error}"
+    },
+    "save_failed": {
+      "message": "Couldn't save {drink}: {error}"
+    },
+    "saved_not_started": {
+      "message": "{drink} is saved, but couldn't be started: {error}"
+    },
+    "recipe_save_failed": {
+      "message": "Couldn't save the recipe: {error}"
+    },
+    "recipe_read_failed": {
+      "message": "Couldn't read the recipe: {error}"
+    },
+    "recipe_delete_failed": {
+      "message": "Couldn't delete the recipe: {error}"
+    },
+    "favorites_failed": {
+      "message": "Couldn't save the favourites: {error}"
+    },
+    "problem_carafe_on_clean": {
+      "message": "the milk carafe is set to clean"
+    },
+    "problem_accessory_1": {
+      "message": "hot water spout missing"
+    },
+    "problem_accessory_2": {
+      "message": "hot milk carafe missing"
+    },
+    "problem_accessory_3": {
+      "message": "chocolate tank missing"
+    },
+    "problem_accessory_6": {
+      "message": "cold milk carafe missing"
+    },
+    "problem_accessory": {
+      "message": "accessory missing"
     }
   }
 }

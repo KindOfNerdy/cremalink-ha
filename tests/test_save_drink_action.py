@@ -6,10 +6,16 @@ from custom_components.cremalink_ha import select as select_mod
 from custom_components.cremalink_ha.const import DOMAIN
 from custom_components.cremalink_ha import services as services_mod
 from custom_components.cremalink_ha.services import async_setup_services
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 
-from tests.helpers import FakeMonitorData, make_device, make_entry, setup_entities
+from tests.helpers import (
+    raises_message,
+    FakeMonitorData,
+    make_device,
+    make_entry,
+    setup_entities,
+)
 
 COFFEE = RecipeParams(
     1, 2, {1: 180, 2: 3, 27: 1}, "profile", {1: (100, 180, 270), 2: (0, 3, 5)}
@@ -98,16 +104,14 @@ async def test_save_and_brew_stops_before_saving_when_the_tank_is_missing(hass):
     _setup.coordinator.data = FakeMonitorData(
         status_name="ready", is_busy=False, is_watertank_empty=True
     )
-    with pytest.raises(
-        HomeAssistantError, match=r"^Coffee cannot start: water tank empty"
-    ):
+    with raises_message("cannot_start", drink="Coffee", problems="Refill water"):
         await _call(hass, device_id, beverage=2, coffee=150, brew=True)
     assert saved == [] and brewed == []
 
 
 async def test_messages_name_the_drink_when_the_card_sends_its_id(hass):
     device_id, _saved, _brewed = await _setup(hass, confirmed=False)
-    with pytest.raises(HomeAssistantError, match=r"did not confirm Coffee;"):
+    with raises_message("not_confirmed_drink", drink="Coffee"):
         await _call(hass, device_id, beverage=2, coffee=150)
 
 
@@ -138,24 +142,24 @@ async def test_custom_recipes_go_to_save_recipe(hass):
 
 
 @pytest.mark.parametrize(
-    "status,busy,match", [("in_standby", False, "not ready"), ("ready", True, "busy")]
+    "status,busy,match", [("in_standby", False, "not_ready"), ("ready", True, "busy")]
 )
 async def test_only_while_ready_and_idle(hass, status, busy, match):
     device_id, saved, _ = await _setup(hass, status=status, busy=busy)
-    with pytest.raises(HomeAssistantError, match=match):
+    with raises_message(match):
         await _call(hass, device_id, beverage="coffee", coffee=150)
     assert saved == []
 
 
 async def test_unconfirmed_save_is_an_error_and_nothing_is_brewed(hass):
     device_id, _, brewed = await _setup(hass, confirmed=False)
-    with pytest.raises(HomeAssistantError, match="did not confirm"):
+    with raises_message("not_confirmed_drink"):
         await _call(hass, device_id, beverage="coffee", coffee=150, brew=True)
     assert brewed == []
 
 
 async def test_unreadable_stored_recipe_is_refused(hass):
     device_id, saved, _ = await _setup(hass, source="default")
-    with pytest.raises(HomeAssistantError, match="stored recipe"):
+    with raises_message("stored_recipe", drink="Coffee"):
         await _call(hass, device_id, beverage="coffee", coffee=150)
     assert saved == []

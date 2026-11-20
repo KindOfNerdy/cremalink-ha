@@ -137,7 +137,7 @@ class TestCoverage:
         assert de["select"]["setting_water_hardness"]["name"] == "Wasserhärte"
         assert de["sensor"]["cremalink_status_name"]["state"]["ready"] == "Bereit"
         assert de["button"]["cmd_stop"]["name"] == "Stopp Zubereitung"
-        assert de["binary_sensor"]["is_watertank_empty"]["name"] == "Wassertank leer"
+        assert de["binary_sensor"]["is_watertank_empty"]["name"] == "Wasser nachfüllen"
 
     def test_german_controls_sort_power_then_stop_then_the_recipes(self):
         # Home Assistant lists a device's controls alphabetically by entity
@@ -169,6 +169,14 @@ class TestEnglishNamesAreUnchanged:
             )
 
     def test_bit_sensor_names_follow_the_library_labels(self):
+        # Warnings the card shows say what to do (agreed 20.11.); every other
+        # bit keeps the library's label.
+        friendly = {
+            "switch_water_tank_absent": "Water tank missing",
+            "switch_door_opened": "Door is open",
+            "alarm_beans_empty": "Refill beans",
+            "alarm_descale": "Time to descale",
+        }
         names = _entity_section(EN)["binary_sensor"]
         shared = {b.key for b in SWITCH_BITS.values()} & {
             b.key for b in ALARM_BITS.values()
@@ -176,7 +184,8 @@ class TestEnglishNamesAreUnchanged:
         for source, bits in (("switch", SWITCH_BITS), ("alarm", ALARM_BITS)):
             for bit in bits.values():
                 expected = f"{bit.label} ({source})" if bit.key in shared else bit.label
-                assert names[f"{source}_{bit.key}"]["name"] == expected
+                key = f"{source}_{bit.key}"
+                assert names[key]["name"] == friendly.get(key, expected)
 
     def test_brew_button_names(self):
         buttons = _entity_section(EN)["button"]
