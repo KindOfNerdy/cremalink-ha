@@ -24,7 +24,7 @@ import logging
 import time
 from dataclasses import replace
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     # HA types action schemas as probatio; same pattern as config_flow.
@@ -48,14 +48,15 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.event import async_call_later
 
 from .brewing import (
+    async_drink_label,
+    async_raise_brew_problems,
     custom_icons,
     custom_names,
-    stored_params,
-    async_drink_label,
     is_brewing,
-    raise_brew_problems,
+    machine_error,
     raise_unless_ready,
     resolve_beverage,
+    stored_params,
 )
 from .const import DOMAIN
 
@@ -199,11 +200,15 @@ def _entry_data(hass: HomeAssistant, device_id: str) -> dict:
     raise ServiceValidationError(f"No Cremalink machine for device {device_id}")
 
 
-async def _async_machine_job(hass: HomeAssistant, failure: str, func, *args):
+#: A failure message: translation key and placeholders (``error`` is added).
+Failure = tuple[str, dict[str, Any]]
+
+
+async def _async_machine_job(hass: HomeAssistant, failure: Failure, func, *args):
     """Run a machine call in the executor with the actions' error handling.
 
-    Bad input becomes a validation error, a lost connection or machine
-    error ``"<failure>: <reason>"``; our own messages pass unchanged.
+    Bad input becomes a validation error, a lost connection or machine error
+    the ``failure`` message with its reason; our own messages pass unchanged.
     """
     try:
         return await hass.async_add_executor_job(func, *args)
@@ -212,18 +217,21 @@ async def _async_machine_job(hass: HomeAssistant, failure: str, func, *args):
     except ValueError as err:
         raise ServiceValidationError(str(err)) from err
     except (OSError, RuntimeError) as err:
-        raise HomeAssistantError(f"{failure}: {err}") from err
+        raise _failure_error(failure, err) from err
 
 
-def _raise_unless_confirmed(confirmed, what: str) -> None:
+def _failure_error(failure: Failure, err: Exception) -> HomeAssistantError:
+    key, placeholders = failure
+    return machine_error(key, **placeholders, error=err)
+
+
+def _raise_unless_confirmed(confirmed, key: str, **placeholders: Any) -> None:
     if not confirmed:
-        raise HomeAssistantError(
-            f"The machine did not confirm {what}; check it on the machine."
-        )
+        raise machine_error(key, **placeholders)
 
 
 async def _async_start_drink(
-    hass: HomeAssistant, data: dict, send, failure: str
+    hass: HomeAssistant, data: dict, send, failure: Failure
 ) -> None:
     """Send a drink through the brew switch, so it shows as running at once."""
     switch = data.get("brew_switch")
@@ -233,7 +241,7 @@ async def _async_start_drink(
         except HomeAssistantError:
             raise
         except (OSError, RuntimeError) as err:
-            raise HomeAssistantError(f"{failure}: {err}") from err
+            raise _failure_error(failure, err) from err
         return
     await _async_machine_job(hass, failure, send)
     await data["coordinator"].async_request_refresh()
@@ -253,14 +261,19 @@ async def _async_brew(hass: HomeAssistant, call: ServiceCall) -> None:
 
     def _prepare():
         params = stored_params(device, beverage_id, label)
-        overrides = build_overrides(params, amounts, label)
-        raise_brew_problems(coordinator.data, {**params.values, **overrides}, label)
-        return partial(
-            device.brew, beverage_id, overrides=overrides or None, params=params
-        )
+        return params, build_overrides(params, amounts, label)
 
-    failure = f"Could not brew {label}"
-    send = await _async_machine_job(hass, failure, _prepare)
+    failure = ("brew_failed", {"drink": label})
+    params, overrides = await _async_machine_job(hass, failure, _prepare)
+    await async_raise_brew_problems(
+        hass,
+        device,
+        coordinator.data,
+        {**params.values, **overrides},
+        beverage_id,
+        label,
+    )
+    send = partial(device.brew, beverage_id, overrides=overrides or None, params=params)
     await _async_start_drink(hass, data, send, failure)
 
 
@@ -281,8 +294,8 @@ async def _async_set_favorites(hass: HomeAssistant, call: ServiceCall) -> None:
     def _write() -> bool:
         return device.set_favorite_beverages(ids, profile)
 
-    confirmed = await _async_machine_job(hass, "Could not write the favourites", _write)
-    _raise_unless_confirmed(confirmed, "the new favourites")
+    confirmed = await _async_machine_job(hass, ("favorites_failed", {}), _write)
+    _raise_unless_confirmed(confirmed, "not_confirmed_favorites")
     _refresh_after_write(hass, data)
     coordinator.async_update_listeners()
 
@@ -321,7 +334,7 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
     slot = call.data[ATTR_SLOT]
     name, icon = call.data[ATTR_NAME], call.data[ATTR_ICON]
 
-    def _save() -> bool:
+    def _compose():
         current = _stored_ingredients(device, slot)
         given = call.data
         ingredients = replace(
@@ -339,13 +352,20 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
                 if value is not None
             },
         )
-        values = compose_custom_recipe(ingredients)
-        if brew:
-            raise_brew_problems(coordinator.data, values, name)
-        return device.save_custom_recipe(slot, name, icon, values, brew=brew)
+        return compose_custom_recipe(ingredients)
 
-    confirmed = await _async_machine_job(hass, "Could not save the recipe", _save)
-    _raise_unless_confirmed(confirmed, "the recipe")
+    failure = ("recipe_save_failed", {})
+    values = await _async_machine_job(hass, failure, _compose)
+    if brew:
+        await async_raise_brew_problems(
+            hass, device, coordinator.data, values, CUSTOM_BASE + slot, name
+        )
+    confirmed = await _async_machine_job(
+        hass,
+        failure,
+        partial(device.save_custom_recipe, slot, name, icon, values, brew=brew),
+    )
+    _raise_unless_confirmed(confirmed, "not_confirmed_recipe")
     _refresh_after_write(hass, data)
     _reload_if_selected(data, CUSTOM_BASE + slot)
     coordinator.async_update_listeners()
@@ -397,14 +417,11 @@ async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
     }
     brew = call.data[ATTR_BREW]
 
-    def _save():
+    def _read():
         params = stored_params(device, beverage_id, label)
-        values = dict(params.values)
-        values.update(build_overrides(params, amounts, label))
-        if brew:
-            # Checked before saving, so a drink that cannot start is not
-            # half done.
-            raise_brew_problems(coordinator.data, values, label)
+        return params, {**params.values, **build_overrides(params, amounts, label)}
+
+    def _save(params, values):
         if not device.save_profile_recipe(beverage_id, values):
             return None
         if brew:
@@ -420,15 +437,22 @@ async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
         # Brewed like the brew switch: with exactly the saved values.
         return partial(device.brew, beverage_id, params=replace(params, values=values))
 
-    send = await _async_machine_job(hass, f"Could not save {label}", _save)
-    _raise_unless_confirmed(send, label)
+    failure = ("save_failed", {"drink": label})
+    params, values = await _async_machine_job(hass, failure, _read)
+    if brew:
+        # Checked before saving, so a drink that cannot start is not half done.
+        await async_raise_brew_problems(
+            hass, device, coordinator.data, values, beverage_id, label
+        )
+    send = await _async_machine_job(hass, failure, _save, params, values)
+    _raise_unless_confirmed(send, "not_confirmed_drink", drink=label)
     _reload_if_selected(data, beverage_id)
     coordinator.async_update_listeners()
     if brew:
         # Like the app's brewing screen: shown as running at once, no start
         # deadline with an error (a coffee shows up busy only after ~30 s).
         await _async_start_drink(
-            hass, data, send, f"{label} was saved, but could not be started"
+            hass, data, send, ("saved_not_started", {"drink": label})
         )
 
 
@@ -438,7 +462,7 @@ async def _async_get_recipe(hass: HomeAssistant, call: ServiceCall) -> dict:
     device = data["device"]
     slot = call.data[ATTR_SLOT]
     current = await _async_machine_job(
-        hass, "Could not read the recipe", _stored_ingredients, device, slot
+        hass, ("recipe_read_failed", {}), _stored_ingredients, device, slot
     )
     name = custom_names(device).get(CUSTOM_BASE + slot, "")
     icons = custom_icons(device)
@@ -463,9 +487,9 @@ async def _async_delete_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
     raise_unless_ready(coordinator.data)
     slot = call.data[ATTR_SLOT]
     confirmed = await _async_machine_job(
-        hass, "Could not delete the recipe", device.delete_custom_recipe, slot
+        hass, ("recipe_delete_failed", {}), device.delete_custom_recipe, slot
     )
-    _raise_unless_confirmed(confirmed, "the deletion")
+    _raise_unless_confirmed(confirmed, "not_confirmed_delete")
     _refresh_after_write(hass, data)
     coordinator.async_update_listeners()
 

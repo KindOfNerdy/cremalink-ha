@@ -19,10 +19,9 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .brewing import (
-    async_drink_label,
-    brew_problems,
+    async_raise_brew_problems,
     is_brewing,
-    raise_brew_problems,
+    machine_error,
     raise_unless_ready,
 )
 from .const import (
@@ -395,11 +394,9 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
             )
         values = dict(getattr(self.session.params, "values", None) or {})
         values.update(self.session.overrides)
-        if brew_problems(data, values):
-            label = await async_drink_label(
-                self.hass, self.device, beverage_id, beverage_id
-            )
-            raise_brew_problems(data, values, label)
+        await async_raise_brew_problems(
+            self.hass, self.device, data, values, beverage_id
+        )
         await self._async_command(
             True,
             partial(
@@ -413,7 +410,7 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
     async def async_start(self, call) -> None:
         """Start a drink sent by an action: shown as running at once."""
         if self._pending_target() is True:
-            raise HomeAssistantError("A drink was just started; wait for the machine.")
+            raise machine_error("just_started")
         await self._async_command(True, call)
 
     async def async_turn_off(self, **kwargs):

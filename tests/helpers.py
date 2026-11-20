@@ -1,5 +1,9 @@
 """Shared test harness for entity-level tests on real Home Assistant."""
 
+from contextlib import contextmanager
+import pytest
+from homeassistant.exceptions import HomeAssistantError
+
 from types import SimpleNamespace
 
 from pytest_homeassistant.common import MockConfigEntry, MockEntityPlatform
@@ -133,3 +137,13 @@ async def setup_entities(hass, entry, device, platform_module, monitor=None):
     # Platform priming is backgrounded (§14.12); let scheduled tasks land.
     await hass.async_block_till_done()
     return coordinator, entities
+
+
+@contextmanager
+def raises_message(key: str, **placeholders):
+    """Expect a translated machine message (``exceptions.<key>``) with these placeholders."""
+    with pytest.raises(HomeAssistantError) as err:
+        yield err
+    assert err.value.translation_key == key, err.value.translation_key
+    for name, value in placeholders.items():
+        assert err.value.translation_placeholders[name] == value

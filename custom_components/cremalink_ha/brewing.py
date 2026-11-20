@@ -44,12 +44,23 @@ def is_brewing(data: Any) -> bool:
     )
 
 
+def machine_error(key: str, **placeholders: Any) -> HomeAssistantError:
+    """A message from the ``exceptions`` translations, in Home Assistant's language."""
+    return HomeAssistantError(
+        translation_domain=DOMAIN,
+        translation_key=key,
+        translation_placeholders={
+            name: str(value) for name, value in placeholders.items()
+        },
+    )
+
+
 def raise_unless_ready(data: Any, *, idle: bool = True) -> None:
     """Refuse a command while the machine is off (or, with ``idle``, busy)."""
     if getattr(data, "status_name", None) in NOT_READY_STATUSES:
-        raise HomeAssistantError("The machine is not ready; turn it on first.")
+        raise machine_error("not_ready")
     if idle and getattr(data, "is_busy", False):
-        raise HomeAssistantError("The machine is busy; wait until it is ready.")
+        raise machine_error("busy")
 
 
 # --- drinks and their names -----------------------------------------------
@@ -89,10 +100,9 @@ def stored_params(device: Any, beverage_id: int, label: str | None = None):
     """
     params = device.recipe_params(beverage_id)
     if params.source != "profile":
-        target = f" for {label}" if label else ""
-        raise HomeAssistantError(
-            f"Could not read the stored recipe{target}; try again."
-        )
+        if label:
+            raise machine_error("stored_recipe", drink=label)
+        raise machine_error("stored_recipe_place")
     return params
 
 
@@ -161,30 +171,24 @@ PASSABLE_ALARMS = frozenset(
     }
 )
 
-#: Monitor flags (named in the device map) that stop a drink.
-_BLOCKING_FLAGS = {
-    "is_watertank_empty": "water tank empty",
-    "is_watertank_open": "water tank not in place",
-    "is_waste_container_full": "grounds container full",
-    "is_waste_container_missing": "grounds container missing",
-}
+#: Monitor flags (named in the device map) that stop a drink; each reads as
+#: the name of its binary sensor ("Refill water").
+_BLOCKING_FLAGS = (
+    "is_watertank_empty",
+    "is_watertank_open",
+    "is_waste_container_full",
+    "is_waste_container_missing",
+)
 
 #: Switch bits that stop a drink.
-_BLOCKING_SWITCHES = {
-    "water_tank_absent": "water tank missing",
-    "door_opened": "door open",
-}
+_BLOCKING_SWITCHES = ("water_tank_absent", "door_opened")
 
 #: Recipe parameter naming the accessory a drink needs (0 = none).
 ACCESSORY_PARAM = 28
 
-#: Accessory codes of the monitor and the recipe parameter.
-_ACCESSORY_NAMES = {
-    1: "hot water spout",
-    2: "milk carafe",
-    3: "chocolate tank",
-    6: "milk carafe",
-}
+#: Accessory codes of the monitor and the recipe parameter that have their
+#: own "… missing" text (1 spout, 2 hot carafe, 3 chocolate, 6 cold carafe).
+_NAMED_ACCESSORIES = (1, 2, 3, 6)
 #: A carafe whose knob stands on clean reports its own code.
 _CARAFE_ON_CLEAN = {2: 4, 6: 7}
 
@@ -194,20 +198,30 @@ def _bits(monitor: Any, name: str) -> Mapping[str, bool | None]:
     return (states() if callable(states) else None) or {}
 
 
+def _sensor_name(key: str) -> str:
+    return f"entity.binary_sensor.{key}.name"
+
+
+def _problem(key: str) -> str:
+    return f"exceptions.problem_{key}.message"
+
+
 def brew_problems(monitor: Any, values: Mapping[int, int] | None) -> list[str]:
-    """Why the machine cannot make the drink now (empty when it can)."""
+    """Why the machine cannot make the drink now, as translation keys (empty when it can)."""
     if monitor is None:
         return []
     problems = [
-        text
-        for key, text in _BLOCKING_FLAGS.items()
+        _sensor_name(key)
+        for key in _BLOCKING_FLAGS
         if getattr(monitor, key, None) is True
     ]
     switches = _bits(monitor, "switch_states")
-    problems += [text for key, text in _BLOCKING_SWITCHES.items() if switches.get(key)]
+    problems += [
+        _sensor_name(f"switch_{key}") for key in _BLOCKING_SWITCHES if switches.get(key)
+    ]
     alarms = _bits(monitor, "alarm_states")
     problems += [
-        bit.label.lower()
+        _sensor_name(f"alarm_{bit.key}")
         for bit in ALARM_BITS.values()
         if alarms.get(bit.key) and bit.key not in PASSABLE_ALARMS
     ]
@@ -215,22 +229,45 @@ def brew_problems(monitor: Any, values: Mapping[int, int] | None) -> list[str]:
     present = getattr(monitor, "accessory_code", None)
     if needed and present is not None and present != needed:
         if _CARAFE_ON_CLEAN.get(needed) == present:
-            problems.append("milk carafe knob on clean")
+            problems.append(_problem("carafe_on_clean"))
+        elif needed in _NAMED_ACCESSORIES:
+            problems.append(_problem(f"accessory_{needed}"))
         else:
-            problems.append(f"{_ACCESSORY_NAMES.get(needed, 'accessory')} not attached")
-    # One wording per cause (a missing tank can set two bits).
+            problems.append(_problem("accessory"))
     return list(dict.fromkeys(problems))
 
 
-def brew_problem_message(label: str, problems: list[str]) -> str:
-    """The error text for a drink that cannot start."""
-    return f"{label} cannot start: {', '.join(problems)}."
+async def _async_texts(hass: HomeAssistant, keys: list[str]) -> list[str]:
+    """The texts of translation keys in Home Assistant's language."""
+    texts: dict[str, str] = {}
+    for category in {key.split(".", 1)[0] for key in keys}:
+        try:
+            texts.update(
+                await async_get_translations(
+                    hass, hass.config.language, category, [DOMAIN]
+                )
+            )
+        except (OSError, ValueError, KeyError) as err:
+            _LOGGER.debug("translations for %s failed: %s", category, err)
+    return [
+        texts.get(f"component.{DOMAIN}.{key}") or key.split(".")[-2].replace("_", " ")
+        for key in keys
+    ]
 
 
-def raise_brew_problems(
-    data: Any, values: Mapping[int, int] | None, label: str
+async def async_raise_brew_problems(
+    hass: HomeAssistant,
+    device: Any,
+    data: Any,
+    values: Mapping[int, int] | None,
+    beverage_id: int,
+    label: str | None = None,
 ) -> None:
     """Stop before sending, as the app does, when the drink cannot start."""
     problems = brew_problems(data, values)
-    if problems:
-        raise HomeAssistantError(brew_problem_message(label, problems))
+    if not problems:
+        return
+    if label is None:
+        label = await async_drink_label(hass, device, beverage_id, beverage_id)
+    texts = await _async_texts(hass, problems)
+    raise machine_error("cannot_start", drink=label, problems=", ".join(texts))

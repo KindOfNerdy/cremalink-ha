@@ -59,11 +59,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # hardware faults… Rare faults are registered but disabled by default.
     # The device map may narrow the documented bits to what the model has:
     # ``exclude`` bits are not created (stale registry entries are removed),
-    # ``disabled_by_default`` bits are registered disabled.
+    # ``disabled_by_default`` bits are registered disabled, and
+    # ``switch_names`` gives bits their meaning on this model (Eletta: the
+    # milk carafes instead of a chocolate tank).
     policy = getattr(coordinator.device, "monitor_bits", None) or {}
+    switch_table = getattr(coordinator.device, "switch_bits", None) or SWITCH_BITS
     excluded = set(policy.get("exclude") or ())
     disabled = set(policy.get("disabled_by_default") or ())
-    for bit in SWITCH_BITS.values():
+    for bit in switch_table.values():
         if bit.key in excluded:
             continue
         entities.append(
@@ -93,16 +96,20 @@ async def async_setup_entry(hass, entry, async_add_entities):
         )
 
     async_add_entities(entities)
-    _remove_excluded_bit_entities(hass, entry, excluded)
+    # Excluded bits and documented switch bits this model names differently.
+    renamed = {bit.key for bit in SWITCH_BITS.values()} - {
+        bit.key for bit in switch_table.values()
+    }
+    _remove_stale_bit_entities(
+        hass, entry, {"switch": excluded | renamed, "alarm": excluded}
+    )
 
 
-def _remove_excluded_bit_entities(hass, entry, excluded) -> None:
-    """Drop registry entries of bits the device map now excludes."""
-    if not excluded:
-        return
+def _remove_stale_bit_entities(hass, entry, stale: dict[str, set[str]]) -> None:
+    """Drop registry entries of bits the device map excludes or renames."""
     ent_reg = er.async_get(hass)
-    for source in ("switch", "alarm"):
-        for key in excluded:
+    for source, keys in stale.items():
+        for key in keys:
             entity_id = ent_reg.async_get_entity_id(
                 "binary_sensor", DOMAIN, f"{entry.entry_id}_{source}_{key}"
             )

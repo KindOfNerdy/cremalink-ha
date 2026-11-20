@@ -6,6 +6,7 @@ from custom_components.cremalink_ha import switch as switch_mod
 from homeassistant.exceptions import HomeAssistantError
 
 from tests.helpers import (
+    raises_message,
     FakeMonitorData,
     make_device,
     make_entry,
@@ -109,7 +110,7 @@ class TestBrewSwitchActions:
             hass, monitor=FakeMonitorData(status_name="ready", is_busy=True)
         )
         session.selected_beverage = 1
-        with pytest.raises(HomeAssistantError, match="busy"):
+        with raises_message("busy"):
             await _brew_switch(entities).async_turn_on()
 
     async def test_turn_on_stops_when_the_machine_cannot_make_it(self, hass):
@@ -125,7 +126,7 @@ class TestBrewSwitchActions:
         session.select(0xC8)
         session.params = _params(0xC8)
         session.loading = False
-        with pytest.raises(HomeAssistantError, match="cannot start: door open"):
+        with raises_message("cannot_start", problems="Door is open"):
             await _brew_switch(entities).async_turn_on()
         assert calls == []
 
@@ -136,7 +137,7 @@ class TestBrewSwitchActions:
         await switch.async_start(lambda: calls.append("brew"))
         assert calls == ["brew"] and switch.is_on is True
         # A second drink is refused while the first is not on the monitor yet.
-        with pytest.raises(HomeAssistantError, match="just started"):
+        with raises_message("just_started"):
             await switch.async_start(lambda: calls.append("again"))
         assert calls == ["brew"]
 

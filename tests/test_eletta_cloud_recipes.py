@@ -14,11 +14,17 @@ from custom_components.cremalink_ha.services import (
     async_setup_services,
     build_overrides,
 )
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from types import SimpleNamespace
 
-from tests.helpers import FakeMonitorData, make_device, make_entry, setup_entities
+from tests.helpers import (
+    raises_message,
+    FakeMonitorData,
+    make_device,
+    make_entry,
+    setup_entities,
+)
 
 COMMAND_MAP = {
     "espresso": {"beverage_id": 1, "action": 1, "name": "Espresso"},
@@ -193,7 +199,7 @@ class TestBrewAction:
     async def test_refuses_while_the_machine_sleeps(self, hass):
         device_id, brewed = await _brew_setup(hass, status="in_standby")
 
-        with pytest.raises(HomeAssistantError, match="not ready"):
+        with raises_message("not_ready"):
             await hass.services.async_call(
                 DOMAIN, "brew", {"device_id": device_id, "beverage": 7}, blocking=True
             )
@@ -203,7 +209,7 @@ class TestBrewAction:
         defaults = RecipeParams(1, 7, {1: 65}, "default", {1: (20, 65, 180)})
         device_id, brewed = await _brew_setup(hass, params=defaults)
 
-        with pytest.raises(HomeAssistantError, match="stored recipe"):
+        with raises_message("stored_recipe"):
             await hass.services.async_call(
                 DOMAIN, "brew", {"device_id": device_id, "beverage": 7}, blocking=True
             )
@@ -259,7 +265,7 @@ class TestSetFavoritesAction:
     async def test_standby_is_refused_without_writing(self, hass):
         device_id, written = await _favorites_setup(hass, status="in_standby")
 
-        with pytest.raises(HomeAssistantError, match="not ready"):
+        with raises_message("not_ready"):
             await hass.services.async_call(
                 DOMAIN,
                 "set_favorites",
@@ -287,7 +293,7 @@ class TestSetFavoritesAction:
     async def test_unconfirmed_write_is_an_error(self, hass):
         device_id, written = await _favorites_setup(hass, confirmed=False)
 
-        with pytest.raises(HomeAssistantError, match="did not confirm"):
+        with raises_message("not_confirmed_favorites"):
             await hass.services.async_call(
                 DOMAIN,
                 "set_favorites",
