@@ -125,7 +125,21 @@ class CremalinkCoordinator(DataUpdateCoordinator[MonitorView]):
         )
 
     async def _async_slow_lanes(self) -> None:
-        """Profile read-back, settings and statistics, then notify entities."""
+        """Keep registration warm, profile read-back, settings and statistics."""
+        # A gated keep-alive stops the app-id registration lapsing while the
+        # machine is awake (a plain monitor poll does not keep it warm), so a
+        # command never has to re-register from cold and be ignored. It is a
+        # no-op until the registration is close to lapsing. A sleeping machine
+        # lets it lapse anyway and the wake command re-registers, so skip it.
+        keep_alive = getattr(self.device, "keep_registration_alive", None)
+        if (
+            keep_alive is not None
+            and getattr(self.data, "status_name", None) not in STANDBY_STATUSES
+        ):
+            try:
+                await self.hass.async_add_executor_job(keep_alive)
+            except (OSError, ValueError, RuntimeError) as err:
+                _LOGGER.debug("registration keep-alive failed: %s", err)
         refresh_profile = getattr(self.device, "refresh_current_profile", None)
         if refresh_profile is not None:
             try:
