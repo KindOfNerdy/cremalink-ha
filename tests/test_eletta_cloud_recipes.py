@@ -9,10 +9,10 @@ from custom_components.cremalink_ha.const import (
     CONNECTION_CLOUD,
     DOMAIN,
 )
+from custom_components.cremalink_ha.brewing import resolve_beverage
 from custom_components.cremalink_ha.services import (
     async_setup_services,
     build_overrides,
-    resolve_beverage,
 )
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr

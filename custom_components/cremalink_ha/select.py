@@ -28,6 +28,7 @@ from homeassistant.helpers.restore_state import (
 )
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .brewing import custom_icons, custom_names, start_commands
 from .const import (
     CONF_CONNECTION_TYPE,
     DOMAIN,
@@ -418,20 +419,12 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
             return
         if not beverages:
             return
-        custom_names = getattr(self.device, "custom_recipe_names", dict)() or {}
-        custom_icons = getattr(self.device, "custom_recipe_icons", dict)() or {}
-        # Stop shares its beverage id with a drink (action 2 = stop, e.g.
-        # ECAM452 stop/hot_water both carry id 16): only start commands name
-        # a drink, and the first one in map order wins.
+        names = custom_names(self.device)
+        icons_by_id = custom_icons(self.device)
+        # Only start commands name a drink; the first one in map order wins.
         commands: dict[int, str] = {}
-        command_map = getattr(self.device, "command_map", None) or {}
-        for command, spec in command_map.items():
-            if (
-                isinstance(spec, dict)
-                and "beverage_id" in spec
-                and int(spec.get("action", 1)) != 2
-            ):
-                commands.setdefault(int(spec["beverage_id"]), command)
+        for command, spec in start_commands(self.device).items():
+            commands.setdefault(int(spec["beverage_id"]), command)
         options: dict[str, int] = {}
         icons: dict[str, int] = {}
         for bev in beverages:
@@ -439,14 +432,14 @@ class CremalinkRecipeSelect(_BaseSelect, RestoreEntity):
             # it in the user's language via entity.select.recipe.state.
             # Custom recipes keep the name given on the machine.
             option = (
-                custom_names.get(bev.bev_id)
+                names.get(bev.bev_id)
                 or commands.get(bev.bev_id)
                 or (self.device.brew_entry(bev.bev_id) or {}).get("name")
                 or _beverage_label(bev)
             )
             options.setdefault(option, bev.bev_id)
-            if bev.bev_id in custom_icons and custom_names.get(bev.bev_id):
-                icons.setdefault(option, custom_icons[bev.bev_id])
+            if bev.bev_id in icons_by_id and names.get(bev.bev_id):
+                icons.setdefault(option, icons_by_id[bev.bev_id])
         self._options = options
         self._option_icons = icons
         # The priming task can outrun entity attachment (hass is None

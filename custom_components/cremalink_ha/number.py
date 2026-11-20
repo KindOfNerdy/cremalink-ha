@@ -20,7 +20,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import BUTTON_UNAVAILABLE_STATUSES, DOMAIN, NOT_BREWING_STATUSES
+from .brewing import is_brewing
+from .const import BUTTON_UNAVAILABLE_STATUSES, DOMAIN
 from .coordinator import CremalinkCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -151,8 +152,9 @@ class CremalinkParamNumber(CoordinatorEntity[CremalinkCoordinator], NumberEntity
             params.bounds, params.values, params.beverage_id
         ):
             return False
-        brewing = data.status_name not in NOT_BREWING_STATUSES and bool(data.is_busy)
-        return data.status_name not in BUTTON_UNAVAILABLE_STATUSES and not brewing
+        return data.status_name not in BUTTON_UNAVAILABLE_STATUSES and not is_brewing(
+            data
+        )
 
     async def async_set_native_value(self, value: float) -> None:
         """Record a raw override — no machine write until brew (spec Q2)."""

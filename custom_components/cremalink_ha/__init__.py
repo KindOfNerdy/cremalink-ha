@@ -26,6 +26,7 @@ from cremalink import (
     log_event,
 )
 
+from .brewing import custom_icons, custom_names
 from .const import (
     CONF_ADDON_URL,
     CONF_ADVERTISED_IP,
@@ -355,12 +356,10 @@ def _seed_catalog_from_cloud(entry, device, dsn, cloud, token_file) -> tuple[int
 
 def _catalog_fingerprint(device) -> tuple:
     """What the recipe list shows and a change in it must refresh: names, pictures, favorites."""
-    names = getattr(device, "custom_recipe_names", None)
-    icons = getattr(device, "custom_recipe_icons", None)
     favorites = getattr(device, "favorite_beverages", None)
     return (
-        tuple(sorted((names() or {}).items())) if callable(names) else (),
-        tuple(sorted((icons() or {}).items())) if callable(icons) else (),
+        tuple(sorted(custom_names(device).items())),
+        tuple(sorted(custom_icons(device).items())),
         tuple(
             tuple(favorites(slot) or ()) if callable(favorites) else ()
             for slot in range(1, 5)
