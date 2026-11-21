@@ -35,7 +35,25 @@ async def _setup(
     device.recipe_params = lambda bev, **kw: RecipeParams(
         1, bev, dict(stored or EMPTY), source, {}
     )
-    device.save_custom_recipe = lambda *a, **kw: saved.append((a, kw)) or confirmed
+    order = []
+
+    def _save_recipe(*a, confirm=True, **kw):
+        saved.append((a, {"confirm": confirm, **kw}))
+        order.append("save")
+        return confirmed if confirm else True
+
+    def _confirm_recipe(*a, **kw):
+        order.append("confirm")
+        return confirmed
+
+    device.save_custom_recipe = _save_recipe
+    device.confirm_custom_recipe = _confirm_recipe
+    device.brewed = []
+    device.brew = lambda bev, **kw: (
+        device.brewed.append((bev, kw)) or order.append("brew")
+    )
+    device.order = order
+    _setup.device = device
     device.delete_custom_recipe = lambda slot, **kw: deleted.append(slot) or confirmed
     device.custom_recipe_names = lambda: {230: "Latte XL"}
     device.custom_recipe_icons = lambda: {230: 2}
@@ -72,7 +90,7 @@ class TestSaveRecipe:
         (args, kwargs) = saved[0]
         assert args[:3] == (6, "Test", 12)
         assert args[3] == {1: 0, 2: 255, 15: 50, 9: 0, 12: 0, 28: 1, 25: 1, 11: 255}
-        assert kwargs == {"brew": False}
+        assert kwargs == {"confirm": True}
 
     async def test_left_out_ingredients_keep_the_stored_ones(self, hass):
         device_id, saved, _ = await _setup(hass, stored=LATTE_XL)
@@ -96,12 +114,24 @@ class TestSaveRecipe:
 
         assert saved[0][0][3][28] == 0
 
-    async def test_brew_flag_is_passed_on(self, hass):
+    async def test_save_and_brew_brews_right_after_saving(self, hass):
         device_id, saved, _ = await _setup(hass)
 
         await _save(hass, device_id, water=50, brew=True)
 
-        assert saved[0][1] == {"brew": True}
+        # Like the app: save (values + name), then brew with exactly these values;
+        # the save is confirmed afterwards.
+        assert saved[0][1] == {"confirm": False}
+        assert _setup.device.order == ["save", "brew", "confirm"]
+        (bev, kw) = _setup.device.brewed[0]
+        assert bev == 235 and kw["params"].values == saved[0][0][3]
+
+    async def test_unconfirmed_save_and_brew_is_reported(self, hass):
+        device_id, _, _ = await _setup(hass, confirmed=False)
+
+        with raises_message("not_confirmed_saved_running", drink="Test"):
+            await _save(hass, device_id, water=50, brew=True)
+        assert _setup.device.brewed
 
     async def test_brew_waits_for_the_needed_accessory(self, hass):
         # Like the app: hot water needs the spout before the drink is sent.

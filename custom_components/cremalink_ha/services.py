@@ -21,7 +21,6 @@ favorites) from the cloud again right now; it is also done every few minutes.
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import replace
 from functools import partial
 from typing import TYPE_CHECKING, Any
@@ -39,6 +38,7 @@ from cremalink.ecam.custom_recipe import (
     compose_custom_recipe,
     describe_custom_recipe,
 )
+from cremalink.domain.device import RecipeParams
 from cremalink.ecam.builder import beverage_type
 from cremalink.ecam.params import PARAMS, to_raw
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
@@ -52,7 +52,6 @@ from .brewing import (
     async_raise_brew_problems,
     custom_icons,
     custom_names,
-    is_brewing,
     machine_error,
     raise_unless_ready,
     resolve_beverage,
@@ -247,6 +246,40 @@ async def _async_start_drink(
     await data["coordinator"].async_request_refresh()
 
 
+#: While the drink runs the machine shows the save late (a 50 ml hot water:
+#: ~87 s, 21.11.); a longer drink takes longer, so confirm with plenty of time.
+SAVE_BREW_CONFIRM_SECONDS = 300.0
+
+
+async def _async_save(
+    hass: HomeAssistant,
+    data: dict,
+    failure: Failure,
+    save,
+    confirm,
+    brew_send,
+    label: str,
+    not_confirmed: tuple[str, dict],
+) -> None:
+    """Save a recipe, and with ``brew_send`` brew it at once (one flow for all drinks).
+
+    Like the app, saving and brewing are two separate frames; the machine takes
+    the brew right after the save (checked live 21.11.), so the drink starts
+    without waiting ~30 s for the save to show in the cloud. The save is still
+    confirmed afterwards; a missing confirmation is reported (the drink runs).
+    """
+    if brew_send is None:
+        confirmed = await _async_machine_job(hass, failure, save, True)
+        _raise_unless_confirmed(confirmed, not_confirmed[0], **not_confirmed[1])
+        return
+    await _async_machine_job(hass, failure, save, False)
+    await _async_start_drink(
+        hass, data, brew_send, ("saved_not_started", {"drink": label})
+    )
+    confirmed = await _async_machine_job(hass, failure, confirm)
+    _raise_unless_confirmed(confirmed, "not_confirmed_saved_running", drink=label)
+
+
 async def _async_brew(hass: HomeAssistant, call: ServiceCall) -> None:
     data = _entry_data(hass, call.data[ATTR_DEVICE_ID])
     device, coordinator = data["device"], data["coordinator"]
@@ -356,43 +389,47 @@ async def _async_save_recipe(hass: HomeAssistant, call: ServiceCall) -> None:
 
     failure = ("recipe_save_failed", {})
     values = await _async_machine_job(hass, failure, _compose)
+    beverage_id = CUSTOM_BASE + slot
     if brew:
         await async_raise_brew_problems(
-            hass, device, coordinator.data, values, CUSTOM_BASE + slot, name
+            hass, device, coordinator.data, values, beverage_id, name
         )
-    confirmed = await _async_machine_job(
-        hass,
-        failure,
-        partial(device.save_custom_recipe, slot, name, icon, values, brew=brew),
+
+    def _save(confirm: bool) -> bool:
+        return device.save_custom_recipe(slot, name, icon, values, confirm=confirm)
+
+    def _confirm() -> bool:
+        return device.confirm_custom_recipe(
+            slot, name, icon, values, timeout=SAVE_BREW_CONFIRM_SECONDS
+        )
+
+    # Brewed with exactly the saved values (the cloud still holds the old ones).
+    brew_send = (
+        partial(
+            device.brew,
+            beverage_id,
+            params=RecipeParams(
+                device.current_profile or 1, beverage_id, dict(values), "profile", {}
+            ),
+        )
+        if brew
+        else None
     )
-    _raise_unless_confirmed(confirmed, "not_confirmed_recipe")
-    _refresh_after_write(hass, data)
-    _reload_if_selected(data, CUSTOM_BASE + slot)
-    coordinator.async_update_listeners()
-
-
-# After a save the app keeps its loading screen up for 15 s on cloud machines;
-# brew no earlier than SAVE_PAUSE_SECONDS and once the machine is idle.
-SAVE_PAUSE_SECONDS = 3.0
-SAVE_SETTLE_SECONDS = 10.0
-MONITOR_POLL_SECONDS = 1.0
-
-
-def _wait_for_monitor(
-    device, condition, timeout: float, pause: float = MONITOR_POLL_SECONDS
-) -> bool:
-    """Poll the machine's monitor until ``condition`` holds (False on timeout)."""
-    deadline = time.monotonic() + timeout
-    time.sleep(pause)
-    while True:
-        try:
-            if condition(device.get_monitor()):
-                return True
-        except (OSError, RuntimeError, ValueError) as err:
-            _LOGGER.debug("monitor read failed while waiting: %s", err)
-        if time.monotonic() >= deadline:
-            return False
-        time.sleep(MONITOR_POLL_SECONDS)
+    try:
+        await _async_save(
+            hass,
+            data,
+            failure,
+            _save,
+            _confirm,
+            brew_send,
+            name,
+            ("not_confirmed_recipe", {}),
+        )
+    finally:
+        _refresh_after_write(hass, data)
+        _reload_if_selected(data, beverage_id)
+        coordinator.async_update_listeners()
 
 
 async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
@@ -421,22 +458,6 @@ async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
         params = stored_params(device, beverage_id, label)
         return params, {**params.values, **build_overrides(params, amounts, label)}
 
-    def _save(params, values):
-        if not device.save_profile_recipe(beverage_id, values):
-            return None
-        if brew:
-            # The app's two steps: save, then brew. A brew sent right after
-            # the save was ignored by the machine (20.11.), so pause and wait
-            # until it is idle again.
-            _wait_for_monitor(
-                device,
-                lambda m: not is_brewing(m),
-                SAVE_SETTLE_SECONDS,
-                pause=SAVE_PAUSE_SECONDS,
-            )
-        # Brewed like the brew switch: with exactly the saved values.
-        return partial(device.brew, beverage_id, params=replace(params, values=values))
-
     failure = ("save_failed", {"drink": label})
     params, values = await _async_machine_job(hass, failure, _read)
     if brew:
@@ -444,16 +465,35 @@ async def _async_save_drink(hass: HomeAssistant, call: ServiceCall) -> None:
         await async_raise_brew_problems(
             hass, device, coordinator.data, values, beverage_id, label
         )
-    send = await _async_machine_job(hass, failure, _save, params, values)
-    _raise_unless_confirmed(send, "not_confirmed_drink", drink=label)
-    _reload_if_selected(data, beverage_id)
-    coordinator.async_update_listeners()
-    if brew:
-        # Like the app's brewing screen: shown as running at once, no start
-        # deadline with an error (a coffee shows up busy only after ~30 s).
-        await _async_start_drink(
-            hass, data, send, ("saved_not_started", {"drink": label})
+
+    def _save(confirm: bool) -> bool:
+        return device.save_profile_recipe(beverage_id, values, confirm=confirm)
+
+    def _confirm() -> bool:
+        return device.confirm_profile_recipe(
+            beverage_id, values, timeout=SAVE_BREW_CONFIRM_SECONDS
         )
+
+    # Brewed like the brew switch: with exactly the saved values.
+    brew_send = (
+        partial(device.brew, beverage_id, params=replace(params, values=values))
+        if brew
+        else None
+    )
+    try:
+        await _async_save(
+            hass,
+            data,
+            failure,
+            _save,
+            _confirm,
+            brew_send,
+            label,
+            ("not_confirmed_drink", {"drink": label}),
+        )
+    finally:
+        _reload_if_selected(data, beverage_id)
+        coordinator.async_update_listeners()
 
 
 async def _async_get_recipe(hass: HomeAssistant, call: ServiceCall) -> dict:

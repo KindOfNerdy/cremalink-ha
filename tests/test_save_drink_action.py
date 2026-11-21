@@ -4,7 +4,6 @@ import pytest
 from cremalink.domain.device import RecipeParams
 from custom_components.cremalink_ha import select as select_mod
 from custom_components.cremalink_ha.const import DOMAIN
-from custom_components.cremalink_ha import services as services_mod
 from custom_components.cremalink_ha.services import async_setup_services
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
@@ -27,13 +26,6 @@ COMMAND_MAP = {
 }
 
 
-@pytest.fixture(autouse=True)
-def _fast_waits(monkeypatch):
-    monkeypatch.setattr(services_mod, "SAVE_PAUSE_SECONDS", 0)
-    monkeypatch.setattr(services_mod, "SAVE_SETTLE_SECONDS", 0)
-    monkeypatch.setattr(services_mod, "MONITOR_POLL_SECONDS", 0)
-
-
 async def _setup(
     hass, *, status="ready", busy=False, confirmed=True, source="profile", starts=True
 ):
@@ -44,10 +36,23 @@ async def _setup(
     device.recipe_params = lambda bev, **kw: RecipeParams(
         params[bev].profile_slot, bev, params[bev].values, source, params[bev].bounds
     )
-    device.save_profile_recipe = (
-        lambda bev, values, **kw: saved.append((bev, values)) or confirmed
+    order = []
+
+    def _save(bev, values, *, confirm=True, **kw):
+        saved.append((bev, values))
+        order.append("save")
+        return confirmed if confirm else True
+
+    def _confirm(bev, values, **kw):
+        order.append("confirm")
+        return confirmed
+
+    device.save_profile_recipe = _save
+    device.confirm_profile_recipe = _confirm
+    device.brew = lambda bev, **kw: (
+        brewed.append(bev) or brew_params.append(kw) or order.append("brew")
     )
-    device.brew = lambda bev, **kw: brewed.append(bev) or brew_params.append(kw)
+    device.order = order
     device.brew_params = brew_params
     entry = make_entry()
     await setup_entities(
@@ -83,10 +88,12 @@ async def test_changed_values_are_saved(hass):
     assert brewed == []
 
 
-async def test_save_and_brew_brews_after_saving(hass):
+async def test_save_and_brew_brews_right_after_saving(hass):
     device_id, saved, brewed = await _setup(hass)
     await _call(hass, device_id, beverage="coffee", coffee=150, brew=True)
     assert len(saved) == 1 and brewed == [2]
+    # Like the app: two frames, the brew does not wait for the save to show.
+    assert _setup.device.order == ["save", "brew", "confirm"]
     # Brewed like the brew switch: with exactly the saved values.
     assert _setup.device.brew_params[0]["params"].values == saved[0][1]
 
@@ -151,11 +158,11 @@ async def test_only_while_ready_and_idle(hass, status, busy, match):
     assert saved == []
 
 
-async def test_unconfirmed_save_is_an_error_and_nothing_is_brewed(hass):
+async def test_unconfirmed_save_and_brew_reports_it_while_the_drink_runs(hass):
     device_id, _, brewed = await _setup(hass, confirmed=False)
-    with raises_message("not_confirmed_drink"):
+    with raises_message("not_confirmed_saved_running", drink="Coffee"):
         await _call(hass, device_id, beverage="coffee", coffee=150, brew=True)
-    assert brewed == []
+    assert brewed == [2]
 
 
 async def test_unreadable_stored_recipe_is_refused(hass):

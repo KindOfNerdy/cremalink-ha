@@ -175,7 +175,8 @@ integration exposes:
   machine's display; 0-19 are the app's pictures, 20-25 more the machine shows) and the
   ingredients `coffee` (20-180 ml), `taste` (0-5), `milk` (5-108 s), `froth` (0-2),
   `milk_first` and `water` (50-300 ml); 0 switches an ingredient off, ingredients left out
-  keep their stored value. `brew: true` also pours it. `get_recipe` returns what a place
+  keep their stored value. `brew: true` also pours it, right after saving (the save is
+  confirmed while the drink runs). `get_recipe` returns what a place
   holds now. The machine must be awake; save and delete report an error if the machine does
   not confirm.
 
@@ -192,8 +193,9 @@ integration exposes:
 - **Save drink action** (`cremalink_ha.save_drink`): keeps changed values of a standard
   drink in the active profile, like *save* on the Coffee Link app's brew screen. Give
   `beverage` and the amounts to change (`coffee`, `taste`, `milk`, `water`,
-  `tea_temperature`; clamped to the drink's limits); `brew: true` pours it afterwards
-  and shows it on the brew switch like a press of it.
+  `tea_temperature`; clamped to the drink's limits); `brew: true` pours it right after
+  saving and shows it on the brew switch like a press of it (the save is confirmed while
+  the drink runs).
   For cold and cold to-go drinks the machine keeps the coffee, milk and water amounts
   fixed, so those are refused there. Only while the machine is ready and idle.
 

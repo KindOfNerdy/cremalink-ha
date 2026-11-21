@@ -525,6 +525,9 @@
     "save_failed": {
       "message": "{drink} ließ sich nicht speichern: {error}"
     },
+    "not_confirmed_saved_running": {
+      "message": "{drink} läuft, aber die Maschine hat das Speichern nicht bestätigt – schau kurz ins Rezept."
+    },
     "saved_not_started": {
       "message": "{drink} ist gespeichert, ließ sich aber nicht starten: {error}"
     },

@@ -651,6 +651,9 @@
     "save_failed": {
       "message": "Couldn't save {drink}: {error}"
     },
+    "not_confirmed_saved_running": {
+      "message": "{drink} is running, but the machine didn't confirm the save; have a quick look at the recipe."
+    },
     "saved_not_started": {
       "message": "{drink} is saved, but couldn't be started: {error}"
     },
