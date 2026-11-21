@@ -5,6 +5,7 @@ from custom_components.cremalink_ha.brewing import (
     ACCESSORY_PARAM,
     async_raise_brew_problems,
     brew_problems,
+    excluded_bits,
     is_brewing,
     raise_unless_ready,
     start_commands,
@@ -46,6 +47,20 @@ def test_blocking_states_are_listed():
         "entity.binary_sensor.switch_door_opened.name",
         "entity.binary_sensor.alarm_tank_too_full.name",
     ]
+
+
+def test_excluded_bits_do_not_block():
+    monitor = _monitor(alarms={"tank_too_full": True}, switches={"door_opened": True})
+    excluded = frozenset({"tank_too_full", "door_opened"})
+    assert brew_problems(monitor, {}, excluded) == []
+
+
+def test_excluded_bits_come_from_the_device_map():
+    class Device:
+        monitor_bits = {"exclude": ["tank_too_full"]}
+
+    assert excluded_bits(Device()) == frozenset({"tank_too_full"})
+    assert excluded_bits(object()) == frozenset()
 
 
 def test_missing_accessory_blocks():

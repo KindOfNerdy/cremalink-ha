@@ -10,6 +10,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .brewing import excluded_bits
 from .const import CONF_CONNECTION_TYPE, DOMAIN, STANDBY_STATUSES
 from .coordinator import CremalinkCoordinator
 from .registry import remove_entities
@@ -64,7 +65,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     # milk carafes instead of a chocolate tank).
     policy = getattr(coordinator.device, "monitor_bits", None) or {}
     switch_table = getattr(coordinator.device, "switch_bits", None) or SWITCH_BITS
-    excluded = set(policy.get("exclude") or ())
+    excluded = set(excluded_bits(coordinator.device))
     disabled = set(policy.get("disabled_by_default") or ())
     for bit in switch_table.values():
         if bit.key in excluded:

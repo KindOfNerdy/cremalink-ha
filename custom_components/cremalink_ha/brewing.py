@@ -206,8 +206,22 @@ def _problem(key: str) -> str:
     return f"exceptions.problem_{key}.message"
 
 
-def brew_problems(monitor: Any, values: Mapping[int, int] | None) -> list[str]:
-    """Why the machine cannot make the drink now, as translation keys (empty when it can)."""
+def excluded_bits(device: Any) -> frozenset[str]:
+    """Monitor bits the device map rules out for this model (meaning differs or unset)."""
+    policy = getattr(device, "monitor_bits", None) or {}
+    return frozenset(policy.get("exclude") or ())
+
+
+def brew_problems(
+    monitor: Any,
+    values: Mapping[int, int] | None,
+    excluded: frozenset[str] = frozenset(),
+) -> list[str]:
+    """Why the machine cannot make the drink now, as translation keys (empty when it can).
+
+    ``excluded`` bits (see :func:`excluded_bits`) never block: on the Eletta
+    alarm 16 does not mean "tank too full" and stays set while it can brew.
+    """
     if monitor is None:
         return []
     problems = [
@@ -217,13 +231,17 @@ def brew_problems(monitor: Any, values: Mapping[int, int] | None) -> list[str]:
     ]
     switches = _bits(monitor, "switch_states")
     problems += [
-        _sensor_name(f"switch_{key}") for key in _BLOCKING_SWITCHES if switches.get(key)
+        _sensor_name(f"switch_{key}")
+        for key in _BLOCKING_SWITCHES
+        if switches.get(key) and key not in excluded
     ]
     alarms = _bits(monitor, "alarm_states")
     problems += [
         _sensor_name(f"alarm_{bit.key}")
         for bit in ALARM_BITS.values()
-        if alarms.get(bit.key) and bit.key not in PASSABLE_ALARMS
+        if alarms.get(bit.key)
+        and bit.key not in PASSABLE_ALARMS
+        and bit.key not in excluded
     ]
     needed = int((values or {}).get(ACCESSORY_PARAM) or 0)
     present = getattr(monitor, "accessory_code", None)
@@ -264,7 +282,7 @@ async def async_raise_brew_problems(
     label: str | None = None,
 ) -> None:
     """Stop before sending, as the app does, when the drink cannot start."""
-    problems = brew_problems(data, values)
+    problems = brew_problems(data, values, excluded_bits(device))
     if not problems:
         return
     if label is None:
