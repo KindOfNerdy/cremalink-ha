@@ -2,6 +2,37 @@
 
 **The official Home Assistant integration for monitoring and controlling IoT coffee machines via Cremalink.**
 
+## Eletta Explore fork
+
+This fork adds what the De'Longhi **Eletta Explore** needs over the cloud (it has no LAN mode): commands that reliably reach the machine, counters and care values, brewing with your own values, saving them in the profile, custom recipes and favorites, like in the Coffee Link app. The changes go to [lodzen/cremalink-ha](https://github.com/lodzen/cremalink-ha) and [lodzen/cremalink](https://github.com/lodzen/cremalink) as pull requests, part of them is already merged there. Once everything is upstream, this fork is no longer needed.
+
+Developed with an Eletta Explore (ECAM452). Other machines should work as in the original, but are untested with this fork.
+
+**Home Assistant 2026.11 and later (Marketplace):**
+
+1. Add the repository (*Add from link*, `https://github.com/KindOfNerdy/cremalink-ha`):
+
+   [![Open your Home Assistant instance and show your custom repositories in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repositories.svg)](https://my.home-assistant.io/redirect/marketplace_repositories/)
+
+2. Install the integration and restart Home Assistant:
+
+   [![Open your Home Assistant instance and open this repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=KindOfNerdy&repository=cremalink-ha&category=integration)
+
+3. Set it up and sign in with your Coffee Link account:
+
+   [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=cremalink_ha)
+
+**Earlier versions:** add the repository in HACS as a custom repository of type *Integration*, then download it.
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=KindOfNerdy&repository=cremalink-ha&category=integration)
+
+Already using lodzen's version? Remove it in the Marketplace (or HACS) first, then add this one and restart; your setup stays.
+
+A dashboard card for it: [KindOfNerdy/cremalink-card](https://github.com/KindOfNerdy/cremalink-card). Problems with the fork go to [this repository's issues](https://github.com/KindOfNerdy/cremalink-ha/issues).
+
+*Everything below is the original README.*
+
+
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?category=integration&repository=cremalink-ha&owner=lodzen)
 [![License](https://img.shields.io/github/license/lodzen/cremalink-ha?style=for-the-badge&color=success)](LICENSE)
 [![Source Code](https://img.shields.io/badge/Source-GitHub-black?style=for-the-badge&logo=github)](https://github.com/lodzen/cremalink-ha)

@@ -3,14 +3,14 @@
   "name": "Cremalink for Home-Assistant",
   "codeowners": ["@lodzen", "@miditkl"],
   "dependencies": [],
-  "documentation": "https://github.com/lodzen/cremalink-ha",
+  "documentation": "https://github.com/KindOfNerdy/cremalink-ha",
   "integration_type": "hub",
   "iot_class": "local_polling",
   "config_flow": true,
   "requirements": [
     "cremalink-lodzen @ git+https://github.com/KindOfNerdy/cremalink@2.0.0.dev9+eletta.9"
   ],
-  "issue_tracker": "https://github.com/lodzen/cremalink-ha/issues",
-  "version": "v0.3.0b1.post12",
+  "issue_tracker": "https://github.com/KindOfNerdy/cremalink-ha/issues",
+  "version": "v0.3.0b1.post13",
   "quality_scale": "bronze"
 }
