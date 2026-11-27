@@ -120,6 +120,8 @@ class CremalinkPowerSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity
     def _reported_on(self) -> bool | None:
         if not self.coordinator.data or not self.coordinator.data.status_name:
             return None
+        if self.coordinator.no_response:
+            return None  # the last reported state is not trustworthy
         return self.coordinator.data.status_name.lower() not in {"standby"} | (
             STANDBY_STATUSES - {"going_to_sleep"}
         )
@@ -150,6 +152,9 @@ class CremalinkPowerSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity
             raise HomeAssistantError(
                 f"Could not send '{command}' to the machine: {err}"
             ) from err
+        if self._reported_on() != target:
+            # only a real change produces a frame (off while asleep does not)
+            self.coordinator.expect_reply()
         self._pending = (target, time.monotonic() + POWER_PENDING_SECONDS)
         self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
@@ -426,4 +431,5 @@ class CremalinkBrewSwitch(CoordinatorEntity[CremalinkCoordinator], SwitchEntity)
             self._pending = None
             self.async_write_ha_state()
             raise
+        self.coordinator.expect_reply()
         await self.coordinator.async_request_refresh()

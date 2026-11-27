@@ -106,6 +106,13 @@ integration exposes:
   updated" shows when the cloud last received the counters. Counters
   reach the cloud only now and then, so this tells how old they are.
   Both keep their last value while the machine sleeps or is unreachable.
+- **"Not answering" status**: the status sensor switches to "Not answering"
+  (and the power switch to unknown) when a power, brew or stop command
+  brings no new status from the machine within 90 seconds, or when it
+  claims to be awake for longer than its auto-off time plus 30 minutes.
+  The next status the machine sends ends it. This happens when the
+  machine's WLAN module hangs; switching the machine off and on at the
+  mains switch brings it back.
 - **Profile select**: lists the occupied machine profiles by name;
   changing it sends a session-gated `0xA9` write — the entity only
   shows machine-confirmed selections. The machine's own selected

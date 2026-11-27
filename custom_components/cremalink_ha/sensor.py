@@ -21,7 +21,13 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_CONNECTION_TYPE, CONNECTION_CLOUD, DOMAIN, STANDBY_STATUSES
+from .const import (
+    CONF_CONNECTION_TYPE,
+    CONNECTION_CLOUD,
+    DOMAIN,
+    NO_RESPONSE_STATUS,
+    STANDBY_STATUSES,
+)
 from .coordinator import CremalinkCoordinator
 from .registry import remove_entities
 
@@ -116,11 +122,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 key,
                 icon,
                 unit,
-                options=(
-                    list(PHASES)
-                    if key == "drink_phase"
-                    else sorted(set(enums.get(enum_key, {}).values())) or None
-                ),
+                options=_sensor_options(key, enums.get(enum_key, {})),
             )
         )
 
@@ -161,6 +163,16 @@ async def async_setup_entry(hass, entry, async_add_entities):
         "sensor",
         [f"{entry.entry_id}_stat_{logical}" for logical in _REMAINING_LOGICAL],
     )
+
+
+def _sensor_options(key: str, enum: dict) -> list[str] | None:
+    """Enum states of a monitor sensor; the status can also be "no answer"."""
+    if key == "drink_phase":
+        return list(PHASES)
+    options = sorted(set(enum.values()))
+    if key == "status_name" and options:
+        options.append(NO_RESPONSE_STATUS)
+    return options or None
 
 
 class _CremalinkEntityBase(CoordinatorEntity[CremalinkCoordinator]):
@@ -255,6 +267,8 @@ class CremalinkSensor(_CremalinkEntityBase, SensorEntity, RestoreEntity):
     def native_value(self):
         """Return the value of the sensor."""
         value = getattr(self.coordinator.data, self._key, None)
+        if self._key == "status_name" and self.coordinator.no_response:
+            return NO_RESPONSE_STATUS  # not remembered: a new frame ends it
         if self._key == "drink_phase":
             return value  # None (unknown) while no drink is made
         if self._key in _STANDBY_RETAINED_KEYS and self._machine_in_standby():

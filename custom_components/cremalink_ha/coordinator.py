@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import partial
 
 from cremalink.domain.device import Device
@@ -11,8 +11,15 @@ from cremalink.parsing.monitor.view import MonitorView
 from cremalink.ecam.settings import SETTING_BIT_MAPS, SETTING_OPTION_MAPS
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, STANDBY_STATUSES
+from .const import (
+    AUTO_OFF_GRACE_MINUTES,
+    AUTO_OFF_MINUTES,
+    DOMAIN,
+    REPLY_TIMEOUT_SECONDS,
+    STANDBY_STATUSES,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -115,6 +122,65 @@ class CremalinkCoordinator(DataUpdateCoordinator[MonitorView]):
         # Profile/settings/statistics run in one background task so a slow
         # cloud round never holds back the monitor update (§14.12).
         self._slow_lanes_task: asyncio.Task | None = None
+        # Reply watch: (frame time when the command went out, monotonic
+        # deadline) while a state-changing command waits for a new frame.
+        self._reply_watch: tuple[object, float] | None = None
+        # Frame time that a command found unanswered; cleared by any newer frame.
+        self._unanswered_frame: object | None = None
+        self._unanswered = False
+
+    def expect_reply(self) -> None:
+        """Note a command that must change the machine's state.
+
+        Without a new monitor frame within ``REPLY_TIMEOUT_SECONDS`` the
+        machine counts as not answering until the next frame arrives.
+        """
+        if self._reply_watch is not None:
+            return  # the first command's deadline stands
+        frame = getattr(self.data, "received_at", None)
+        self._reply_watch = (frame, time.monotonic() + REPLY_TIMEOUT_SECONDS)
+
+    @property
+    def no_response(self) -> bool:
+        """True while the machine does not answer (see ``NO_RESPONSE_STATUS``)."""
+        return self._unanswered or self._awake_too_long()
+
+    def _awake_too_long(self) -> bool:
+        """An awake status older than auto-off + grace cannot be current."""
+        data = self.data
+        status = getattr(data, "status_name", None)
+        frame = getattr(data, "received_at", None)
+        if status is None or status in STANDBY_STATUSES:
+            return False
+        if not isinstance(frame, datetime):
+            return False
+        if frame.tzinfo is None:
+            frame = frame.astimezone()
+        index = (self.settings or {}).get("auto_off")
+        minutes = AUTO_OFF_MINUTES.get(index, max(AUTO_OFF_MINUTES.values()))
+        limit = timedelta(minutes=minutes + AUTO_OFF_GRACE_MINUTES)
+        return dt_util.utcnow() - frame > limit
+
+    def _track_reply(self, data) -> None:
+        """Update the reply watch with a freshly fetched monitor."""
+        frame = getattr(data, "received_at", None)
+        if self._unanswered and frame != self._unanswered_frame:
+            self._unanswered = False
+            self._unanswered_frame = None
+        if self._reply_watch is None:
+            return
+        sent_frame, deadline = self._reply_watch
+        if frame != sent_frame:
+            self._reply_watch = None
+        elif time.monotonic() >= deadline:
+            self._reply_watch = None
+            self._unanswered = True
+            self._unanswered_frame = frame
+            _LOGGER.warning(
+                "No new status from the machine %s s after a command; "
+                "showing it as not answering until it reports again",
+                REPLY_TIMEOUT_SECONDS,
+            )
 
     def _schedule_slow_lanes(self) -> None:
         """Start the slow lanes unless a previous round is still running."""
@@ -248,6 +314,7 @@ class CremalinkCoordinator(DataUpdateCoordinator[MonitorView]):
 
         try:
             data = await self.hass.async_add_executor_job(self._get_monitor)
+            self._track_reply(data)
 
             if (
                 self.embedded_server is not None

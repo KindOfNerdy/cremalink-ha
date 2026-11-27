@@ -243,6 +243,7 @@ async def _async_start_drink(
             raise _failure_error(failure, err) from err
         return
     await _async_machine_job(hass, failure, send)
+    data["coordinator"].expect_reply()
     await data["coordinator"].async_request_refresh()
 
 

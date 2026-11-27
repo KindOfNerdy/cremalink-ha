@@ -277,7 +277,8 @@
           "cleaning_milk": "Spült",
           "preparing_chocolate": "Macht Schokolade",
           "preparing_milk_alt": "Macht Milch",
-          "unknown_29": "Beschäftigt"
+          "unknown_29": "Beschäftigt",
+          "no_response": "Antwortet nicht"
         }
       },
       "cremalink_accessory_name": {

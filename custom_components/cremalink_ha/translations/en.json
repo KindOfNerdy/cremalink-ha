@@ -403,7 +403,8 @@
           "cleaning_milk": "Rinsing",
           "preparing_chocolate": "Making chocolate",
           "preparing_milk_alt": "Making milk",
-          "unknown_29": "Busy"
+          "unknown_29": "Busy",
+          "no_response": "Not answering"
         }
       },
       "cremalink_accessory_name": {

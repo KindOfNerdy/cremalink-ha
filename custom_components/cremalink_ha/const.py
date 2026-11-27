@@ -55,6 +55,23 @@ REPAIR_RECONFIGURE_REQUIRED = "reconfigure_required"
 #: bytes — latched values must not surface as live readings (T044/FR-034).
 STANDBY_STATUSES = {"in_standby", "going_to_sleep", "sleeping", "deep_sleep"}
 
+#: Status shown when the machine stopped answering: a command that changes its
+#: state got no new monitor frame, or it claims to be awake for longer than its
+#: auto-off allows. Frames are event-driven, so an old frame alone proves
+#: nothing; the WLAN module was seen hanging this way (live 27.11.2026).
+NO_RESPONSE_STATUS = "no_response"
+
+#: Time a state-changing command (power, brew, stop) gets to produce a new
+#: monitor frame. The machine answers within ~30 s over the cloud (waking up
+#: 30 s, a brew ~28 s); the app waits up to 60 s for power-on.
+REPLY_TIMEOUT_SECONDS = 90
+
+#: Auto-off option index -> minutes (param 0x003E). Unknown index: the longest.
+AUTO_OFF_MINUTES = {0: 15, 1: 30, 2: 60, 3: 180}
+
+#: Slack on top of the auto-off time before an awake status counts as stale.
+AUTO_OFF_GRACE_MINUTES = 30
+
 #: Statuses in which the machine cannot start a drink (asleep or still waking).
 NOT_READY_STATUSES = STANDBY_STATUSES | {"waking_up"}
 
